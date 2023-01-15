@@ -1,15 +1,23 @@
 package agent
 
-import "fmt"
+import (
+	"context"
+
+	"github.com/sirupsen/logrus"
+)
 
 type Service struct {
-	settings ServiceSettings
+	settings   ServiceSettings
+	serviceCtx context.Context
+	logger     *logrus.Logger
 }
 
-func NewService(settings ServiceSettings) *Service {
-	return &Service{settings: settings}
+func NewService(ctx context.Context, settings ServiceSettings, logger *logrus.Logger) *Service {
+	return &Service{serviceCtx: ctx, settings: settings, logger: logger}
 }
 
 func (service *Service) Start() {
-	fmt.Println("Agent started")
+	service.logger.Info("Agent service started")
+	<-service.serviceCtx.Done()
+	service.logger.Info("Agent service finished")
 }
