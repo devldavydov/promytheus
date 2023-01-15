@@ -56,11 +56,19 @@ func (service *Service) collectorThread(wg *sync.WaitGroup, metricsWrapper *Metr
 
 func (service *Service) publisherThread(wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
 	defer wg.Done()
+
+	publisher := metrics.NewHttpPublisher(service.settings.serverAddress, service.logger)
+
 	for {
 		select {
 		case <-time.After(service.settings.reportInterval):
 			service.logger.Debugf("Start reporting metrics")
-			service.logger.Debugf("Send metrics: %+v", metricsWrapper.Get())
+			metrics := metricsWrapper.Get()
+
+			err := publisher.Publish(metrics)
+			if err != nil {
+				service.logger.Errorf("Publish metrics error: %s", err)
+			}
 		case <-service.serviceCtx.Done():
 			service.logger.Info("Publisher thread shutdown due to context closed")
 			return
