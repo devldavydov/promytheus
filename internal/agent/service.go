@@ -13,11 +13,11 @@ type Service struct {
 	settings       ServiceSettings
 	serviceCtx     context.Context
 	logger         *logrus.Logger
-	currentMetrics *metrics.MetricsWrapper
+	currentMetrics *MetricsWrapper
 }
 
 func NewService(ctx context.Context, settings ServiceSettings, logger *logrus.Logger) *Service {
-	return &Service{serviceCtx: ctx, settings: settings, logger: logger, currentMetrics: &metrics.MetricsWrapper{}}
+	return &Service{serviceCtx: ctx, settings: settings, logger: logger, currentMetrics: &MetricsWrapper{}}
 }
 
 func (service *Service) Start() {
@@ -33,7 +33,7 @@ func (service *Service) Start() {
 	service.logger.Info("Agent service finished")
 }
 
-func (service *Service) collectorThread(wg *sync.WaitGroup, metricsWrapper *metrics.MetricsWrapper) {
+func (service *Service) collectorThread(wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
 	defer wg.Done()
 
 	collector := metrics.NewRuntimeCollector(service.logger)
@@ -54,7 +54,7 @@ func (service *Service) collectorThread(wg *sync.WaitGroup, metricsWrapper *metr
 	}
 }
 
-func (service *Service) publisherThread(wg *sync.WaitGroup, metricsWrapper *metrics.MetricsWrapper) {
+func (service *Service) publisherThread(wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
 	defer wg.Done()
 	for {
 		select {
