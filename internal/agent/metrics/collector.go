@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"runtime"
 
+	"github.com/devldavydov/promytheus/internal/common/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,35 +28,35 @@ func (runtimeColl *RuntimeCollector) Collect() (Metrics, error) {
 	runtime.ReadMemStats(&memStats)
 
 	metrics := Metrics{
-		Alloc:         gauge(memStats.Alloc),
-		BuckHashSys:   gauge(memStats.BuckHashSys),
-		Frees:         gauge(memStats.Frees),
-		GCCPUFraction: gauge(memStats.GCCPUFraction),
-		GCSys:         gauge(memStats.GCSys),
-		HeapAlloc:     gauge(memStats.HeapAlloc),
-		HeapIdle:      gauge(memStats.HeapIdle),
-		HeapInuse:     gauge(memStats.HeapInuse),
-		HeapObjects:   gauge(memStats.HeapObjects),
-		HeapReleased:  gauge(memStats.HeapReleased),
-		HeapSys:       gauge(memStats.HeapSys),
-		LastGC:        gauge(memStats.LastGC),
-		Lookups:       gauge(memStats.Lookups),
-		MCacheInuse:   gauge(memStats.MCacheInuse),
-		MCacheSys:     gauge(memStats.MCacheSys),
-		MSpanInuse:    gauge(memStats.MSpanInuse),
-		MSpanSys:      gauge(memStats.MSpanSys),
-		Mallocs:       gauge(memStats.Mallocs),
-		NextGC:        gauge(memStats.NextGC),
-		NumForcedGC:   gauge(memStats.NumForcedGC),
-		NumGC:         gauge(memStats.NumGC),
-		OtherSys:      gauge(memStats.OtherSys),
-		PauseTotalNs:  gauge(memStats.PauseTotalNs),
-		StackInuse:    gauge(memStats.StackInuse),
-		StackSys:      gauge(memStats.StackSys),
-		Sys:           gauge(memStats.Sys),
-		TotalAlloc:    gauge(memStats.TotalAlloc),
-		PollCount:     counter(runtimeColl.collectCnt),
-		RandomValue:   gauge(rand.Float64()),
+		Alloc:         types.Gauge(memStats.Alloc),
+		BuckHashSys:   types.Gauge(memStats.BuckHashSys),
+		Frees:         types.Gauge(memStats.Frees),
+		GCCPUFraction: types.Gauge(memStats.GCCPUFraction),
+		GCSys:         types.Gauge(memStats.GCSys),
+		HeapAlloc:     types.Gauge(memStats.HeapAlloc),
+		HeapIdle:      types.Gauge(memStats.HeapIdle),
+		HeapInuse:     types.Gauge(memStats.HeapInuse),
+		HeapObjects:   types.Gauge(memStats.HeapObjects),
+		HeapReleased:  types.Gauge(memStats.HeapReleased),
+		HeapSys:       types.Gauge(memStats.HeapSys),
+		LastGC:        types.Gauge(memStats.LastGC),
+		Lookups:       types.Gauge(memStats.Lookups),
+		MCacheInuse:   types.Gauge(memStats.MCacheInuse),
+		MCacheSys:     types.Gauge(memStats.MCacheSys),
+		MSpanInuse:    types.Gauge(memStats.MSpanInuse),
+		MSpanSys:      types.Gauge(memStats.MSpanSys),
+		Mallocs:       types.Gauge(memStats.Mallocs),
+		NextGC:        types.Gauge(memStats.NextGC),
+		NumForcedGC:   types.Gauge(memStats.NumForcedGC),
+		NumGC:         types.Gauge(memStats.NumGC),
+		OtherSys:      types.Gauge(memStats.OtherSys),
+		PauseTotalNs:  types.Gauge(memStats.PauseTotalNs),
+		StackInuse:    types.Gauge(memStats.StackInuse),
+		StackSys:      types.Gauge(memStats.StackSys),
+		Sys:           types.Gauge(memStats.Sys),
+		TotalAlloc:    types.Gauge(memStats.TotalAlloc),
+		PollCount:     types.Counter(runtimeColl.collectCnt),
+		RandomValue:   types.Gauge(rand.Float64()),
 	}
 
 	runtimeColl.logger.Debugf("Collected metrics: %+v", metrics)

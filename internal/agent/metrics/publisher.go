@@ -9,7 +9,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const httpClientTimeout time.Duration = 1 * time.Second
+const (
+	httpClientTimeout time.Duration = 1 * time.Second
+	updateUrlFormat   string        = "http://%s/update/%%s/%%s/%%s"
+)
 
 type Publisher interface {
 	Publish(metrics Metrics) error
@@ -29,7 +32,7 @@ func NewHttpPublisher(serverAddress string, logger *logrus.Logger) *HttpPublishe
 }
 
 func (httpPublisher *HttpPublisher) Publish(metrics Metrics) error {
-	urlFormat := fmt.Sprintf("http://%s/update/%%s/%%s/%%s", httpPublisher.serverAddress)
+	urlFormat := fmt.Sprintf(updateUrlFormat, httpPublisher.serverAddress)
 	metricsSentCnt := 0
 
 	for _, m := range metrics.ToItemsList() {

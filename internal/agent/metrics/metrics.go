@@ -1,67 +1,39 @@
 package metrics
 
 import (
-	"strconv"
+	"github.com/devldavydov/promytheus/internal/common/types"
 )
 
-type gauge float64
-
-func (g gauge) String() string {
-	return strconv.FormatFloat(float64(g), 'f', 6, 64)
-}
-
-func (g gauge) TypeName() string {
-	return "gauge"
-}
-
-func (g gauge) StringValue() string {
-	return g.String()
-}
-
-type counter int64
-
-func (c counter) String() string {
-	return strconv.FormatInt(int64(c), 10)
-}
-
-func (c counter) TypeName() string {
-	return "counter"
-}
-
-func (c counter) StringValue() string {
-	return c.String()
-}
-
 type Metrics struct {
-	Alloc         gauge
-	BuckHashSys   gauge
-	Frees         gauge
-	GCCPUFraction gauge
-	GCSys         gauge
-	HeapAlloc     gauge
-	HeapIdle      gauge
-	HeapInuse     gauge
-	HeapObjects   gauge
-	HeapReleased  gauge
-	HeapSys       gauge
-	LastGC        gauge
-	Lookups       gauge
-	MCacheInuse   gauge
-	MCacheSys     gauge
-	MSpanInuse    gauge
-	MSpanSys      gauge
-	Mallocs       gauge
-	NextGC        gauge
-	NumForcedGC   gauge
-	NumGC         gauge
-	OtherSys      gauge
-	PauseTotalNs  gauge
-	StackInuse    gauge
-	StackSys      gauge
-	Sys           gauge
-	TotalAlloc    gauge
-	PollCount     counter
-	RandomValue   gauge
+	Alloc         types.Gauge
+	BuckHashSys   types.Gauge
+	Frees         types.Gauge
+	GCCPUFraction types.Gauge
+	GCSys         types.Gauge
+	HeapAlloc     types.Gauge
+	HeapIdle      types.Gauge
+	HeapInuse     types.Gauge
+	HeapObjects   types.Gauge
+	HeapReleased  types.Gauge
+	HeapSys       types.Gauge
+	LastGC        types.Gauge
+	Lookups       types.Gauge
+	MCacheInuse   types.Gauge
+	MCacheSys     types.Gauge
+	MSpanInuse    types.Gauge
+	MSpanSys      types.Gauge
+	Mallocs       types.Gauge
+	NextGC        types.Gauge
+	NumForcedGC   types.Gauge
+	NumGC         types.Gauge
+	OtherSys      types.Gauge
+	PauseTotalNs  types.Gauge
+	StackInuse    types.Gauge
+	StackSys      types.Gauge
+	Sys           types.Gauge
+	TotalAlloc    types.Gauge
+	PollCount     types.Counter
+	RandomValue   types.Gauge
 }
 
 type MetricsItem struct {
@@ -78,7 +50,7 @@ func (metrics Metrics) ToItemsList() []MetricsItem {
 		{"GCCPUFraction", metrics.GCCPUFraction.TypeName(), metrics.GCCPUFraction.StringValue()},
 		{"GCSys", metrics.GCSys.TypeName(), metrics.GCSys.StringValue()},
 		{"HeapAlloc", metrics.HeapAlloc.TypeName(), metrics.HeapAlloc.StringValue()},
-		{"HeapIdle", metrics.HeapIdle.TypeName(), metrics.HeapAlloc.StringValue()},
+		{"HeapIdle", metrics.HeapIdle.TypeName(), metrics.HeapIdle.StringValue()},
 		{"HeapInuse", metrics.HeapInuse.TypeName(), metrics.HeapInuse.StringValue()},
 		{"HeapObjects", metrics.HeapObjects.TypeName(), metrics.HeapObjects.StringValue()},
 		{"HeapReleased", metrics.HeapReleased.TypeName(), metrics.HeapReleased.StringValue()},
