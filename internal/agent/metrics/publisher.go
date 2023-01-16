@@ -44,11 +44,13 @@ func (httpPublisher *HTTPPublisher) Publish(metrics Metrics) error {
 		}
 		request.Header.Set("Content-Type", "text/plain")
 
-		_, err = httpPublisher.httpClient.Do(request)
+		response, err := httpPublisher.httpClient.Do(request)
 		if err != nil {
 			httpPublisher.logger.Errorf("Failed to publish metrics: %v", err)
 			continue
 		}
+		defer response.Body.Close()
+
 		metricsSentCnt += 1
 	}
 
