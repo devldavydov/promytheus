@@ -57,7 +57,7 @@ func (service *Service) collectorThread(wg *sync.WaitGroup, metricsWrapper *Metr
 func (service *Service) publisherThread(wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
 	defer wg.Done()
 
-	publisher := metrics.NewHttpPublisher(service.settings.serverAddress, service.logger)
+	publisher := metrics.NewHTTPPublisher(service.settings.serverAddress, service.logger)
 
 	for {
 		select {

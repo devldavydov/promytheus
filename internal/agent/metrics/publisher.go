@@ -11,33 +11,33 @@ import (
 
 const (
 	httpClientTimeout time.Duration = 1 * time.Second
-	updateUrlFormat   string        = "http://%s/update/%%s/%%s/%%s"
+	updateURLFormat   string        = "http://%s/update/%%s/%%s/%%s"
 )
 
 type Publisher interface {
 	Publish(metrics Metrics) error
 }
 
-type HttpPublisher struct {
+type HTTPPublisher struct {
 	serverAddress string
 	httpClient    *http.Client
 	logger        *logrus.Logger
 }
 
-func NewHttpPublisher(serverAddress string, logger *logrus.Logger) *HttpPublisher {
+func NewHTTPPublisher(serverAddress string, logger *logrus.Logger) *HTTPPublisher {
 	client := &http.Client{}
 	client.Timeout = httpClientTimeout
 
-	return &HttpPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}
+	return &HTTPPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}
 }
 
-func (httpPublisher *HttpPublisher) Publish(metrics Metrics) error {
-	urlFormat := fmt.Sprintf(updateUrlFormat, httpPublisher.serverAddress)
+func (httpPublisher *HTTPPublisher) Publish(metrics Metrics) error {
+	urlFormat := fmt.Sprintf(updateURLFormat, httpPublisher.serverAddress)
 	metricsSentCnt := 0
 
 	for _, m := range metrics.ToItemsList() {
-		requestUrl := fmt.Sprintf(urlFormat, m.typeName, m.metricName, m.value)
-		request, err := http.NewRequest(http.MethodPost, requestUrl, nil)
+		requestURL := fmt.Sprintf(urlFormat, m.typeName, m.metricName, m.value)
+		request, err := http.NewRequest(http.MethodPost, requestURL, nil)
 		if err != nil {
 			httpPublisher.logger.Errorf("Failed to create publish metrics request: %v", err)
 			continue
