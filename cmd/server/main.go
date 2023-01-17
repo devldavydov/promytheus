@@ -1,23 +1,19 @@
 package main
 
 import (
-	"fmt"
-	"io"
-	"log"
-	"net/http"
+	"context"
+	"time"
+
+	"github.com/devldavydov/promytheus/internal/common/helpers"
+	"github.com/devldavydov/promytheus/internal/server"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	metricsHandler := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			io.WriteString(w, "Method Not Allowed\n")
-			return
-		}
+	logger := logrus.New()
+	logger.SetLevel(logrus.DebugLevel) // TODO: read from env LOG_LEVEL
 
-		fmt.Println(req.URL)
-	}
-
-	http.HandleFunc("/", metricsHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	serverSettings := server.NewServiceSettings("127.0.0.1", 8080)
+	serverService := server.NewService(helpers.CreateContextWithSignalHadler(context.Background()), serverSettings, 5*time.Second, logger)
+	serverService.Start()
 }
