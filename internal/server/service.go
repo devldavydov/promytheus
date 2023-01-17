@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/devldavydov/promytheus/internal/server/handlers"
+	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,7 +25,13 @@ func NewService(ctx context.Context, settings ServiceSettings, shutdownTimeout t
 func (service *Service) Start() {
 	service.logger.Info("Server service started")
 
-	http.HandleFunc("/update/", handlers.UpdateMetricsHandler(nil, service.logger))
+	http.HandleFunc(
+		"/update/",
+		handlers.NewUpdateMetricsHandler(
+			storage.NewMemStorage(),
+			service.logger,
+		).Handle(),
+	)
 	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: nil}
 
 	errChan := make(chan error)

@@ -8,7 +8,22 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func UpdateMetricsHandler(storage storage.Storage, logger *logrus.Logger) func(w http.ResponseWriter, req *http.Request) {
+type UpdateMetricsHandler struct {
+	storage storage.Storage
+	logger  *logrus.Logger
+}
+
+type requestParams struct {
+	metricType  string
+	metricName  string
+	metricValue string
+}
+
+func NewUpdateMetricsHandler(storage storage.Storage, logger *logrus.Logger) *UpdateMetricsHandler {
+	return &UpdateMetricsHandler{storage: storage, logger: logger}
+}
+
+func (handler *UpdateMetricsHandler) Handle() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -16,6 +31,10 @@ func UpdateMetricsHandler(storage storage.Storage, logger *logrus.Logger) func(w
 			return
 		}
 
-		logger.Debugf("Received update request: %s", req.URL)
+		handler.logger.Debugf("Received update request: %s", req.URL)
 	}
+}
+
+func (handler *UpdateMetricsHandler) parseRequest(req *http.Request) (requestParams, error) {
+	return requestParams{}, nil
 }
