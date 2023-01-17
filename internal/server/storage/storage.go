@@ -8,11 +8,3 @@ type Storage interface {
 	SetCounterMetric(metricName string, value types.Counter) error
 	GetCounterMetric(metricName string) (types.Counter, error)
 }
-
-type MetricNotFoundError struct {
-	err string
-}
-
-func (e MetricNotFoundError) Error() string {
-	return e.err
-}
