@@ -7,3 +7,5 @@ type MetricNotFoundError struct {
 func (e *MetricNotFoundError) Error() string {
 	return e.err
 }
+
+var MetricNotFoundErrorP *MetricNotFoundError

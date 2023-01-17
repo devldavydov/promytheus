@@ -41,14 +41,26 @@ func TestUpdateMetricsHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "Incorrect URL: parts count",
+			name: "Incorrect URL: parts count #1",
 			req: request{
 				method: http.MethodPost,
 				url:    "/update/gauge/metric1/1/2/3",
 			},
 			resp: response{
-				code:        http.StatusBadRequest,
-				body:        "Bad Request",
+				code:        http.StatusNotFound,
+				body:        "Not Found",
+				contentType: "text/plain",
+			},
+		},
+		{
+			name: "Incorrect URL: parts count #2",
+			req: request{
+				method: http.MethodPost,
+				url:    "/update/gauge/metric1",
+			},
+			resp: response{
+				code:        http.StatusNotFound,
+				body:        "Not Found",
 				contentType: "text/plain",
 			},
 		},
@@ -59,8 +71,8 @@ func TestUpdateMetricsHandler(t *testing.T) {
 				url:    "/update/fuzz/metric1/1",
 			},
 			resp: response{
-				code:        http.StatusBadRequest,
-				body:        "Bad Request",
+				code:        http.StatusNotImplemented,
+				body:        "Not Implemented",
 				contentType: "text/plain",
 			},
 		},
