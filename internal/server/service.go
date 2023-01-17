@@ -3,10 +3,10 @@ package server
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
+	"github.com/devldavydov/promytheus/internal/server/handlers"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,18 +24,8 @@ func NewService(ctx context.Context, settings ServiceSettings, shutdownTimeout t
 func (service *Service) Start() {
 	service.logger.Info("Server service started")
 
-	metricsHandler := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			io.WriteString(w, "Method Not Allowed\n")
-			return
-		}
-
-		fmt.Println(req.URL)
-	}
-
-	http.HandleFunc("/", metricsHandler)
-	httpServer := &http.Server{Addr: fmt.Sprintf("%s:%d", service.settings.serverAddress, service.settings.serverPort), Handler: nil}
+	http.HandleFunc("/update/", handlers.UpdateMetricsHandler(nil, service.logger))
+	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: nil}
 
 	errChan := make(chan error)
 	go func(ch chan error) {
@@ -58,4 +48,8 @@ func (service *Service) Start() {
 		}
 		return
 	}
+}
+
+func (service *Service) getServerFullAddr() string {
+	return fmt.Sprintf("%s:%d", service.settings.serverAddress, service.settings.serverPort)
 }
