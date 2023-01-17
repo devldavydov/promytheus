@@ -25,13 +25,13 @@ func NewService(ctx context.Context, settings ServiceSettings, shutdownTimeout t
 func (service *Service) Start() {
 	service.logger.Info("Server service started")
 
-	http.HandleFunc(
-		"/update/",
-		handlers.NewUpdateMetricsHandler(
-			storage.NewMemStorage(),
-			service.logger,
-		).Handle(),
+	updHandler := handlers.NewUpdateMetricsHandler(
+		handlers.UpdateMetricsUrlPattern,
+		storage.NewMemStorage(),
+		service.logger,
 	)
+	updHandler.Handle(http.HandleFunc)
+
 	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: nil}
 
 	errChan := make(chan error)
