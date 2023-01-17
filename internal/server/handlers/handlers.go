@@ -3,7 +3,7 @@ package handlers
 import "net/http"
 
 const (
-	UpdateMetricsUrlPattern string = "/update/"
+	UpdateMetricsURLPattern string = "/update/"
 )
 
 type Handler interface {

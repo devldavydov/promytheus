@@ -26,7 +26,7 @@ func (service *Service) Start() {
 	service.logger.Info("Server service started")
 
 	updHandler := handlers.NewUpdateMetricsHandler(
-		handlers.UpdateMetricsUrlPattern,
+		handlers.UpdateMetricsURLPattern,
 		storage.NewMemStorage(),
 		service.logger,
 	)
