@@ -1,41 +1,41 @@
 package handlers
 
-type IncorrectUrlWrongPartsCountError struct {
+type IncorrectURLWrongPartsCountError struct {
 	err string
 }
 
-func (e *IncorrectUrlWrongPartsCountError) Error() string {
+func (e *IncorrectURLWrongPartsCountError) Error() string {
 	return e.err
 }
 
-var IncorrectUrlWrongPartsCountErrorP *IncorrectUrlWrongPartsCountError
+var IncorrectURLWrongPartsCountErrorP *IncorrectURLWrongPartsCountError
 
-type IncorrectUrlUnknownMetricType struct {
+type IncorrectURLUnknownMetricType struct {
 	err string
 }
 
-func (e *IncorrectUrlUnknownMetricType) Error() string {
+func (e *IncorrectURLUnknownMetricType) Error() string {
 	return e.err
 }
 
-var IncorrectUrlUnknownMetricTypeP *IncorrectUrlUnknownMetricType
+var IncorrectURLUnknownMetricTypeP *IncorrectURLUnknownMetricType
 
-type IncorrectUrlEmptyMetricName struct {
+type IncorrectURLEmptyMetricName struct {
 	err string
 }
 
-func (e *IncorrectUrlEmptyMetricName) Error() string {
+func (e *IncorrectURLEmptyMetricName) Error() string {
 	return e.err
 }
 
-var IncorrectUrlEmptyMetricNameP *IncorrectUrlEmptyMetricName
+var IncorrectURLEmptyMetricNameP *IncorrectURLEmptyMetricName
 
-type IncorrectUrlWrongMetricValue struct {
+type IncorrectURLWrongMetricValue struct {
 	err string
 }
 
-func (e *IncorrectUrlWrongMetricValue) Error() string {
+func (e *IncorrectURLWrongMetricValue) Error() string {
 	return e.err
 }
 
-var IncorrectUrlWrongMetricValueP *IncorrectUrlWrongMetricValue
+var IncorrectURLWrongMetricValueP *IncorrectURLWrongMetricValue

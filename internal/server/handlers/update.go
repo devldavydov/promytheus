@@ -44,9 +44,9 @@ func (handler *UpdateMetricsHandler) HandlerFunc() func(http.ResponseWriter, *ht
 		if err != nil {
 			handler.logger.Errorf("Incorrect update request [%s], err: %v", req.URL, err)
 
-			if errors.As(err, &IncorrectUrlWrongPartsCountErrorP) {
+			if errors.As(err, &IncorrectURLWrongPartsCountErrorP) {
 				handler.createResponse(rw, "text/plain", http.StatusNotFound, "Not Found")
-			} else if errors.As(err, &IncorrectUrlUnknownMetricTypeP) {
+			} else if errors.As(err, &IncorrectURLUnknownMetricTypeP) {
 				handler.createResponse(rw, "text/plain", http.StatusNotImplemented, "Not Implemented")
 			} else {
 				handler.createResponse(rw, "text/plain", http.StatusBadRequest, "Bad Request")
@@ -68,21 +68,21 @@ func (handler *UpdateMetricsHandler) parseRequest(req *http.Request) (requestPar
 	parts := strings.Split(url, "/")
 
 	if len(parts) != 3 {
-		return requestParams{}, &IncorrectUrlWrongPartsCountError{err: "wrong url parts count"}
+		return requestParams{}, &IncorrectURLWrongPartsCountError{err: "wrong url parts count"}
 	}
 
 	if !types.AllTypes[parts[0]] {
-		return requestParams{}, &IncorrectUrlUnknownMetricType{err: "unknown metric type"}
+		return requestParams{}, &IncorrectURLUnknownMetricType{err: "unknown metric type"}
 	}
 
 	if len(parts[1]) == 0 {
-		return requestParams{}, &IncorrectUrlEmptyMetricName{err: "empty metric name"}
+		return requestParams{}, &IncorrectURLEmptyMetricName{err: "empty metric name"}
 	}
 
 	if types.GaugeTypeName == parts[0] {
 		gaugeVal, err := types.NewGaugeFromString(parts[2])
 		if err != nil {
-			return requestParams{}, &IncorrectUrlWrongMetricValue{err: fmt.Sprintf("incorrect %s val", types.GaugeTypeName)}
+			return requestParams{}, &IncorrectURLWrongMetricValue{err: fmt.Sprintf("incorrect %s val", types.GaugeTypeName)}
 		}
 		return requestParams{
 			metricType: types.GaugeTypeName,
@@ -92,7 +92,7 @@ func (handler *UpdateMetricsHandler) parseRequest(req *http.Request) (requestPar
 	} else if types.CounterTypeName == parts[0] {
 		counterVal, err := types.NewCounterFromString(parts[2])
 		if err != nil {
-			return requestParams{}, &IncorrectUrlWrongMetricValue{fmt.Sprintf("incorrect %s val", types.CounterTypeName)}
+			return requestParams{}, &IncorrectURLWrongMetricValue{fmt.Sprintf("incorrect %s val", types.CounterTypeName)}
 		}
 		return requestParams{
 			metricType:   types.CounterTypeName,
