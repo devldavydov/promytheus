@@ -27,7 +27,3 @@ func (c Counter) String() string {
 func (c Counter) TypeName() string {
 	return CounterTypeName
 }
-
-func (c Counter) StringValue() string {
-	return c.String()
-}

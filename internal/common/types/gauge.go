@@ -23,7 +23,3 @@ func (g Gauge) String() string {
 func (g Gauge) TypeName() string {
 	return GaugeTypeName
 }
-
-func (g Gauge) StringValue() string {
-	return g.String()
-}
