@@ -8,6 +8,7 @@ import (
 
 	"github.com/devldavydov/promytheus/internal/server/handlers"
 	"github.com/devldavydov/promytheus/internal/server/storage"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
 )
 
@@ -25,14 +26,13 @@ func NewService(ctx context.Context, settings ServiceSettings, shutdownTimeout t
 func (service *Service) Start() {
 	service.logger.Info("Server service started")
 
-	updHandler := handlers.NewUpdateMetricsHandler(
-		handlers.UpdateMetricsURLPattern,
+	metricsHandler := handlers.NewMetricsHandler(
 		storage.NewMemStorage(),
 		service.logger,
 	)
-	updHandler.Handle(http.HandleFunc)
+	r := handlers.NewRouter(metricsHandler, middleware.RealIP, middleware.Logger, middleware.Recoverer)
 
-	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: nil}
+	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: r}
 
 	errChan := make(chan error)
 	go func(ch chan error) {

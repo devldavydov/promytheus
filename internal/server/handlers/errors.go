@@ -1,15 +1,5 @@
 package handlers
 
-type IncorrectURLWrongPartsCountError struct {
-	err string
-}
-
-func (e *IncorrectURLWrongPartsCountError) Error() string {
-	return e.err
-}
-
-var IncorrectURLWrongPartsCountErrorP *IncorrectURLWrongPartsCountError
-
 type IncorrectURLUnknownMetricType struct {
 	err string
 }

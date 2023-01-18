@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/devldavydov/promytheus/internal/common/types"
 	"github.com/devldavydov/promytheus/internal/server/storage"
+	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
 )
 
-type UpdateMetricsHandler struct {
-	urlPattern string
-	storage    storage.Storage
-	logger     *logrus.Logger
+type MetricsHandler struct {
+	storage storage.Storage
+	logger  *logrus.Logger
 }
 
 type requestParams struct {
@@ -25,28 +24,17 @@ type requestParams struct {
 	counterValue types.Counter
 }
 
-func NewUpdateMetricsHandler(urlPattern string, storage storage.Storage, logger *logrus.Logger) *UpdateMetricsHandler {
-	return &UpdateMetricsHandler{urlPattern: urlPattern, storage: storage, logger: logger}
+func NewMetricsHandler(storage storage.Storage, logger *logrus.Logger) *MetricsHandler {
+	return &MetricsHandler{storage: storage, logger: logger}
 }
 
-func (handler *UpdateMetricsHandler) Handle(handleFunc func(pattern string, handler func(http.ResponseWriter, *http.Request))) {
-	handleFunc(handler.urlPattern, handler.HandlerFunc())
-}
-
-func (handler *UpdateMetricsHandler) HandlerFunc() func(http.ResponseWriter, *http.Request) {
+func (handler *MetricsHandler) UpdateMetrics() http.HandlerFunc {
 	return func(rw http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPost {
-			handler.createResponse(rw, "text/plain", http.StatusMethodNotAllowed, "Method Not Allowed")
-			return
-		}
-
-		params, err := handler.parseRequest(req)
+		params, err := handler.parseRequest(chi.URLParam(req, "metricType"), chi.URLParam(req, "metricName"), chi.URLParam(req, "metricValue"))
 		if err != nil {
 			handler.logger.Errorf("Incorrect update request [%s], err: %v", req.URL, err)
 
-			if errors.As(err, &IncorrectURLWrongPartsCountErrorP) {
-				handler.createResponse(rw, "text/plain", http.StatusNotFound, "Not Found")
-			} else if errors.As(err, &IncorrectURLUnknownMetricTypeP) {
+			if errors.As(err, &IncorrectURLUnknownMetricTypeP) {
 				handler.createResponse(rw, "text/plain", http.StatusNotImplemented, "Not Implemented")
 			} else {
 				handler.createResponse(rw, "text/plain", http.StatusBadRequest, "Bad Request")
@@ -63,40 +51,33 @@ func (handler *UpdateMetricsHandler) HandlerFunc() func(http.ResponseWriter, *ht
 	}
 }
 
-func (handler *UpdateMetricsHandler) parseRequest(req *http.Request) (requestParams, error) {
-	url := strings.TrimPrefix(req.URL.Path, handler.urlPattern)
-	parts := strings.Split(url, "/")
-
-	if len(parts) != 3 {
-		return requestParams{}, &IncorrectURLWrongPartsCountError{err: "wrong url parts count"}
-	}
-
-	if !types.AllTypes[parts[0]] {
+func (handler *MetricsHandler) parseRequest(metricType, metricName, metricValue string) (requestParams, error) {
+	if !types.AllTypes[metricType] {
 		return requestParams{}, &IncorrectURLUnknownMetricType{err: "unknown metric type"}
 	}
 
-	if len(parts[1]) == 0 {
+	if len(metricName) == 0 {
 		return requestParams{}, &IncorrectURLEmptyMetricName{err: "empty metric name"}
 	}
 
-	if types.GaugeTypeName == parts[0] {
-		gaugeVal, err := types.NewGaugeFromString(parts[2])
+	if types.GaugeTypeName == metricType {
+		gaugeVal, err := types.NewGaugeFromString(metricValue)
 		if err != nil {
 			return requestParams{}, &IncorrectURLWrongMetricValue{err: fmt.Sprintf("incorrect %s val", types.GaugeTypeName)}
 		}
 		return requestParams{
 			metricType: types.GaugeTypeName,
-			metricName: parts[1],
+			metricName: metricName,
 			gaugeValue: gaugeVal,
 		}, nil
-	} else if types.CounterTypeName == parts[0] {
-		counterVal, err := types.NewCounterFromString(parts[2])
+	} else if types.CounterTypeName == metricType {
+		counterVal, err := types.NewCounterFromString(metricValue)
 		if err != nil {
 			return requestParams{}, &IncorrectURLWrongMetricValue{fmt.Sprintf("incorrect %s val", types.CounterTypeName)}
 		}
 		return requestParams{
 			metricType:   types.CounterTypeName,
-			metricName:   parts[1],
+			metricName:   metricName,
 			counterValue: counterVal,
 		}, nil
 	}
@@ -104,7 +85,7 @@ func (handler *UpdateMetricsHandler) parseRequest(req *http.Request) (requestPar
 	return requestParams{}, nil
 }
 
-func (handler *UpdateMetricsHandler) createResponse(rw http.ResponseWriter, contentType string, statusCode int, body string) {
+func (handler *MetricsHandler) createResponse(rw http.ResponseWriter, contentType string, statusCode int, body string) {
 	rw.Header().Set("Content-Type", contentType)
 	rw.WriteHeader(statusCode)
 	io.WriteString(rw, body)

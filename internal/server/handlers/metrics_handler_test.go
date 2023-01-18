@@ -9,6 +9,7 @@ import (
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateMetricsHandler(t *testing.T) {
@@ -36,8 +37,8 @@ func TestUpdateMetricsHandler(t *testing.T) {
 			},
 			resp: response{
 				code:        http.StatusMethodNotAllowed,
-				body:        "Method Not Allowed",
-				contentType: "text/plain",
+				body:        "",
+				contentType: "",
 			},
 		},
 		{
@@ -48,8 +49,8 @@ func TestUpdateMetricsHandler(t *testing.T) {
 			},
 			resp: response{
 				code:        http.StatusNotFound,
-				body:        "Not Found",
-				contentType: "text/plain",
+				body:        "404 page not found\n",
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
@@ -60,8 +61,8 @@ func TestUpdateMetricsHandler(t *testing.T) {
 			},
 			resp: response{
 				code:        http.StatusNotFound,
-				body:        "Not Found",
-				contentType: "text/plain",
+				body:        "404 page not found\n",
+				contentType: "text/plain; charset=utf-8",
 			},
 		},
 		{
@@ -164,25 +165,30 @@ func TestUpdateMetricsHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := NewUpdateMetricsHandler("/update/", storage.NewMemStorage(), logrus.New())
+			metricsHandler := NewMetricsHandler(storage.NewMemStorage(), logrus.New())
+			r := NewRouter(metricsHandler)
+			ts := httptest.NewServer(r)
+			defer ts.Close()
 
-			request := httptest.NewRequest(tt.req.method, tt.req.url, nil)
+			statusCode, contentType, body := testRequest(t, ts, tt.req.method, tt.req.url)
 
-			w := httptest.NewRecorder()
-			h := http.HandlerFunc(handler.HandlerFunc())
-			h.ServeHTTP(w, request)
-			res := w.Result()
-
-			assert.Equal(t, tt.resp.code, res.StatusCode)
-
-			defer res.Body.Close()
-			resBody, err := io.ReadAll(res.Body)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			assert.Equal(t, tt.resp.body, string(resBody))
-			assert.Equal(t, tt.resp.contentType, res.Header.Get("Content-Type"))
+			assert.Equal(t, tt.resp.code, statusCode)
+			assert.Equal(t, tt.resp.body, body)
+			assert.Equal(t, tt.resp.contentType, contentType)
 		})
 	}
+}
+
+func testRequest(t *testing.T, ts *httptest.Server, method, path string) (int, string, string) {
+	req, err := http.NewRequest(method, ts.URL+path, nil)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	return resp.StatusCode, resp.Header.Get("Content-Type"), string(respBody)
 }
