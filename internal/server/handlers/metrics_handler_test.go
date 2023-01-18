@@ -223,11 +223,26 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        "1.230000",
+				body:        "1.230",
 				contentType: ContentTypeTextPlain,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("metric1", 1.23)
+			},
+		},
+		{
+			name: "get metric: gauge rounded",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/value/gauge/metric1",
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        "1.235",
+				contentType: ContentTypeTextPlain,
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetGaugeMetric("metric1", 1.23456)
 			},
 		},
 	}

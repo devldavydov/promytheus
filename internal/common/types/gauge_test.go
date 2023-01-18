@@ -12,7 +12,7 @@ func TestNewGaugeFromString(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, expected, val)
 
-	val, err = NewGaugeFromString("1.23456000000")
+	val, err = NewGaugeFromString("1.23456000")
 	assert.Nil(t, err)
 	assert.Equal(t, expected, val)
 }
@@ -23,6 +23,7 @@ func TestNewGaugeFromStringErr(t *testing.T) {
 }
 
 func TestGaugeToString(t *testing.T) {
-	assert.Equal(t, "1.230000", Gauge(1.23).String())
-	assert.Equal(t, "1.000000", Gauge(1).String())
+	assert.Equal(t, "1.230", Gauge(1.23).String())
+	assert.Equal(t, "1.235", Gauge(1.23456).String())
+	assert.Equal(t, "1.000", Gauge(1).String())
 }

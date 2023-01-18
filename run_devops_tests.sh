@@ -19,3 +19,7 @@ echo "### Iteration 2"
 
 echo
 echo "### Iteration 3"
+./devopstest -test.v -test.run=^TestIteration3[b]*$ -source-path=. -binary-path=cmd/server/server
+
+echo
+echo "### Iteration 4"

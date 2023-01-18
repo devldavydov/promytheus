@@ -17,7 +17,7 @@ func NewGaugeFromString(val string) (Gauge, error) {
 }
 
 func (g Gauge) String() string {
-	return strconv.FormatFloat(float64(g), 'f', 6, 64)
+	return strconv.FormatFloat(float64(g), 'f', 3, 64)
 }
 
 func (g Gauge) TypeName() string {
