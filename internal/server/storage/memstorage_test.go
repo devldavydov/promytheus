@@ -52,3 +52,20 @@ func TestCounterGetUnknown(t *testing.T) {
 	var notFoundErr *MetricNotFoundError
 	assert.True(t, errors.As(err, &notFoundErr))
 }
+
+func TestGetAllMetrics(t *testing.T) {
+	storage := NewMemStorage()
+	storage.SetCounterMetric("foo", types.Counter(5))
+	storage.SetCounterMetric("bar", types.Counter(10))
+	storage.SetGaugeMetric("fuzz", types.Gauge(0))
+	storage.SetGaugeMetric("buzz", types.Gauge(1.23456))
+
+	items, err := storage.GetAllMetrics()
+	assert.Nil(t, err)
+	assert.Equal(t, []StorageItem{
+		{"bar", types.Counter(10)},
+		{"foo", types.Counter(5)},
+		{"buzz", types.Gauge(1.23456)},
+		{"fuzz", types.Gauge(0)},
+	}, items)
+}

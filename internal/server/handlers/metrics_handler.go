@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"text/template"
 
 	"github.com/devldavydov/promytheus/internal/common/types"
 	"github.com/devldavydov/promytheus/internal/server/storage"
@@ -88,8 +89,38 @@ func (handler *MetricsHandler) GetMetric() http.HandlerFunc {
 }
 
 func (handler *MetricsHandler) GetMetrics() http.HandlerFunc {
-	return func(rw http.ResponseWriter, req *http.Request) {
+	pageTemplate := `
+	<html>
+		<body>
+			<table border="1">
+				<tr>
+					<th>Metric Type</th>
+					<th>Metric Name</th>
+					<th>Metric Value</th<
+				</tr>
+				{{ range . }}
+				<tr>
+					<td>{{ .Value.TypeName }}</td>
+					<td>{{ .MetricName }}</td>
+					<td>{{ .Value }}</td>
+				</tr>
+				{{ end }}
+			</table>
+		</body>
+	</html>
+	`
 
+	return func(rw http.ResponseWriter, req *http.Request) {
+		metrics, err := handler.storage.GetAllMetrics()
+		if err != nil {
+			handler.logger.Errorf("Get all metrics error: %v", err)
+			handler.createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, ResponseInternalServerError)
+			return
+		}
+		tmpl, _ := template.New("metrics").Parse(pageTemplate)
+		handler.createResponseTmpl(rw, ContentTypeHtml, http.StatusOK, func(w io.Writer) {
+			tmpl.Execute(w, metrics)
+		})
 	}
 }
 
@@ -138,4 +169,10 @@ func (handler *MetricsHandler) createResponse(rw http.ResponseWriter, contentTyp
 	rw.Header().Set("Content-Type", contentType)
 	rw.WriteHeader(statusCode)
 	io.WriteString(rw, body)
+}
+
+func (handler *MetricsHandler) createResponseTmpl(rw http.ResponseWriter, contentType string, statusCode int, tmpl func(io.Writer)) {
+	rw.Header().Set("Content-Type", contentType)
+	rw.WriteHeader(statusCode)
+	tmpl(rw)
 }

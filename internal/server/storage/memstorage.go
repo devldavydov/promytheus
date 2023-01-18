@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"sort"
 	"sync"
 
 	"github.com/devldavydov/promytheus/internal/common/types"
@@ -52,4 +53,20 @@ func (storage *MemStorage) GetCounterMetric(metricName string) (types.Counter, e
 		return 0, &MetricNotFoundError{}
 	}
 	return val, nil
+}
+
+func (storage *MemStorage) GetAllMetrics() ([]StorageItem, error) {
+	storage.mu.Lock()
+	defer storage.mu.Unlock()
+
+	var items []StorageItem
+	for name, value := range storage.counterStorage {
+		items = append(items, StorageItem{name, value})
+	}
+	for name, value := range storage.gaugeStorage {
+		items = append(items, StorageItem{name, value})
+	}
+	sort.Sort(StorageItemByMetricTypeName(items))
+
+	return items, nil
 }
