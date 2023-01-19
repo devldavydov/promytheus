@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/devldavydov/promytheus/internal/server/storage"
+	"github.com/devldavydov/promytheus/tests/data"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -243,6 +244,38 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("metric1", 1.23456)
+			},
+		},
+		/// Get all metrics page
+		{
+			name: "get all metrics page: empty",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/",
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        data.AllMetricsEmptyResponse,
+				contentType: ContentTypeHtml,
+			},
+		},
+		{
+			name: "get all metrics page: with data",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/",
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        data.AllMetricsResponseWithData,
+				contentType: ContentTypeHtml,
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetGaugeMetric("foo", 1.23456)
+				s.SetGaugeMetric("bar", 1.23456)
+				s.SetCounterMetric("aaa", 1)
+				s.SetCounterMetric("aaa", 1)
+				s.SetCounterMetric("zzz", 3)
 			},
 		},
 	}

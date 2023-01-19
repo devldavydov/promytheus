@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -96,7 +97,7 @@ func (handler *MetricsHandler) GetMetrics() http.HandlerFunc {
 				<tr>
 					<th>Metric Type</th>
 					<th>Metric Name</th>
-					<th>Metric Value</th<
+					<th>Metric Value</th>
 				</tr>
 				{{ range . }}
 				<tr>
@@ -118,9 +119,9 @@ func (handler *MetricsHandler) GetMetrics() http.HandlerFunc {
 			return
 		}
 		tmpl, _ := template.New("metrics").Parse(pageTemplate)
-		handler.createResponseTmpl(rw, ContentTypeHtml, http.StatusOK, func(w io.Writer) {
-			tmpl.Execute(w, metrics)
-		})
+		buf := new(bytes.Buffer)
+		tmpl.Execute(buf, metrics)
+		handler.createResponse(rw, ContentTypeHtml, http.StatusOK, buf.String())
 	}
 }
 
@@ -169,10 +170,4 @@ func (handler *MetricsHandler) createResponse(rw http.ResponseWriter, contentTyp
 	rw.Header().Set("Content-Type", contentType)
 	rw.WriteHeader(statusCode)
 	io.WriteString(rw, body)
-}
-
-func (handler *MetricsHandler) createResponseTmpl(rw http.ResponseWriter, contentType string, statusCode int, tmpl func(io.Writer)) {
-	rw.Header().Set("Content-Type", contentType)
-	rw.WriteHeader(statusCode)
-	tmpl(rw)
 }
