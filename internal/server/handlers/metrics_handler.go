@@ -121,7 +121,7 @@ func (handler *MetricsHandler) GetMetrics() http.HandlerFunc {
 		tmpl, _ := template.New("metrics").Parse(pageTemplate)
 		buf := new(bytes.Buffer)
 		tmpl.Execute(buf, metrics)
-		handler.createResponse(rw, ContentTypeHtml, http.StatusOK, buf.String())
+		handler.createResponse(rw, ContentTypeHTML, http.StatusOK, buf.String())
 	}
 }
 

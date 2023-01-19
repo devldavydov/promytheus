@@ -256,7 +256,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        data.AllMetricsEmptyResponse,
-				contentType: ContentTypeHtml,
+				contentType: ContentTypeHTML,
 			},
 		},
 		{
@@ -268,7 +268,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        data.AllMetricsResponseWithData,
-				contentType: ContentTypeHtml,
+				contentType: ContentTypeHTML,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("foo", 1.23456)
