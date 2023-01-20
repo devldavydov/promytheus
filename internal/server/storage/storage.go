@@ -4,7 +4,7 @@ import "github.com/devldavydov/promytheus/internal/common/types"
 
 type StorageItem struct {
 	MetricName string
-	Value      types.BaseType
+	Value      types.MetricValue
 }
 
 type StorageItemByMetricTypeName []StorageItem

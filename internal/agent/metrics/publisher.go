@@ -30,10 +30,10 @@ func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublis
 func (httpPublisher *HTTPPublisher) Publish(metrics Metrics) error {
 	metricsSentCnt := 0
 
-	for _, m := range metrics.ToItemsList() {
+	for name, value := range metrics {
 		request, err := http.NewRequest(
 			http.MethodPost,
-			httpPublisher.serverAddress.JoinPath("update", m.typeName, m.metricName, m.value).String(),
+			httpPublisher.serverAddress.JoinPath("update", value.TypeName(), name, value.String()).String(),
 			nil)
 		if err != nil {
 			httpPublisher.logger.Errorf("Failed to create publish metrics request: %v", err)

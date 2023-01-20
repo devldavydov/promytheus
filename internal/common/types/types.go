@@ -7,7 +7,7 @@ var AllTypes = map[string]bool{
 	CounterTypeName: true,
 }
 
-type BaseType interface {
+type MetricValue interface {
 	fmt.Stringer
 	TypeName() string
 }

@@ -10,13 +10,14 @@ import (
 )
 
 type Service struct {
+	mu             sync.Mutex
 	settings       ServiceSettings
 	logger         *logrus.Logger
-	currentMetrics *MetricsWrapper
+	currentMetrics metrics.Metrics
 }
 
 func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
-	return &Service{settings: settings, logger: logger, currentMetrics: &MetricsWrapper{}}
+	return &Service{settings: settings, logger: logger}
 }
 
 func (service *Service) Start(ctx context.Context) {
@@ -25,14 +26,14 @@ func (service *Service) Start(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	wg.Add(2)
-	go service.collectorThread(ctx, &wg, service.currentMetrics)
-	go service.publisherThread(ctx, &wg, service.currentMetrics)
+	go service.collectorThread(ctx, &wg)
+	go service.publisherThread(ctx, &wg)
 	wg.Wait()
 
 	service.logger.Info("Agent service finished")
 }
 
-func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
+func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	collector := metrics.NewRuntimeCollector(service.logger)
@@ -41,11 +42,16 @@ func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup,
 		select {
 		case <-time.After(service.settings.pollInterval):
 			service.logger.Debugf("Start collecting metrics")
-			metricsVal, err := collector.Collect()
+
+			metrics, err := collector.Collect()
 			if err != nil {
 				service.logger.Errorf("Failed to collect metrics, err: %s", err)
+				continue
 			}
-			metricsWrapper.Set(metricsVal)
+
+			service.mu.Lock()
+			service.currentMetrics = metrics
+			service.mu.Unlock()
 		case <-ctx.Done():
 			service.logger.Info("Collector thread shutdown due to context closed")
 			return
@@ -53,7 +59,7 @@ func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup,
 	}
 }
 
-func (service *Service) publisherThread(ctx context.Context, wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
+func (service *Service) publisherThread(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	publisher := metrics.NewHTTPPublisher(service.settings.serverAddress, service.logger)
@@ -62,7 +68,10 @@ func (service *Service) publisherThread(ctx context.Context, wg *sync.WaitGroup,
 		select {
 		case <-time.After(service.settings.reportInterval):
 			service.logger.Debugf("Start reporting metrics")
-			metrics := metricsWrapper.Get()
+
+			service.mu.Lock()
+			metrics := service.currentMetrics
+			service.mu.Unlock()
 
 			err := publisher.Publish(metrics)
 			if err != nil {
