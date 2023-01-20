@@ -20,6 +20,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	agentService := agent.NewService(helpers.CreateContextWithSignalHadler(context.Background()), agentSettings, logger)
-	agentService.Start()
+	agentService := agent.NewService(agentSettings, logger)
+	agentService.Start(helpers.CreateContextWithSignalHadler(context.Background()))
 }

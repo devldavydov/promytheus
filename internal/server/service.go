@@ -14,16 +14,15 @@ import (
 
 type Service struct {
 	settings        ServiceSettings
-	serviceCtx      context.Context
 	shutdownTimeout time.Duration
 	logger          *logrus.Logger
 }
 
-func NewService(ctx context.Context, settings ServiceSettings, shutdownTimeout time.Duration, logger *logrus.Logger) *Service {
-	return &Service{serviceCtx: ctx, settings: settings, shutdownTimeout: shutdownTimeout, logger: logger}
+func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger *logrus.Logger) *Service {
+	return &Service{settings: settings, shutdownTimeout: shutdownTimeout, logger: logger}
 }
 
-func (service *Service) Start() {
+func (service *Service) Start(ctx context.Context) {
 	service.logger.Info("Server service started")
 
 	metricsHandler := handlers.NewMetricsHandler(
@@ -43,7 +42,7 @@ func (service *Service) Start() {
 	case err := <-errChan:
 		service.logger.Errorf("Server service exited with err: %v", err)
 		return
-	case <-service.serviceCtx.Done():
+	case <-ctx.Done():
 		service.logger.Infof("Server service context canceled")
 
 		ctx, cancel := context.WithTimeout(context.Background(), service.shutdownTimeout)
@@ -53,6 +52,8 @@ func (service *Service) Start() {
 		if err != nil {
 			service.logger.Errorf("Shutdown error: %v", err)
 		}
+
+		service.logger.Info("Server service finished")
 		return
 	}
 }

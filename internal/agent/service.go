@@ -11,29 +11,28 @@ import (
 
 type Service struct {
 	settings       ServiceSettings
-	serviceCtx     context.Context
 	logger         *logrus.Logger
 	currentMetrics *MetricsWrapper
 }
 
-func NewService(ctx context.Context, settings ServiceSettings, logger *logrus.Logger) *Service {
-	return &Service{serviceCtx: ctx, settings: settings, logger: logger, currentMetrics: &MetricsWrapper{}}
+func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
+	return &Service{settings: settings, logger: logger, currentMetrics: &MetricsWrapper{}}
 }
 
-func (service *Service) Start() {
+func (service *Service) Start(ctx context.Context) {
 	service.logger.Info("Agent service started")
 
 	var wg sync.WaitGroup
 
 	wg.Add(2)
-	go service.collectorThread(&wg, service.currentMetrics)
-	go service.publisherThread(&wg, service.currentMetrics)
+	go service.collectorThread(ctx, &wg, service.currentMetrics)
+	go service.publisherThread(ctx, &wg, service.currentMetrics)
 	wg.Wait()
 
 	service.logger.Info("Agent service finished")
 }
 
-func (service *Service) collectorThread(wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
+func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
 	defer wg.Done()
 
 	collector := metrics.NewRuntimeCollector(service.logger)
@@ -47,14 +46,14 @@ func (service *Service) collectorThread(wg *sync.WaitGroup, metricsWrapper *Metr
 				service.logger.Errorf("Failed to collect metrics, err: %s", err)
 			}
 			metricsWrapper.Set(metricsVal)
-		case <-service.serviceCtx.Done():
+		case <-ctx.Done():
 			service.logger.Info("Collector thread shutdown due to context closed")
 			return
 		}
 	}
 }
 
-func (service *Service) publisherThread(wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
+func (service *Service) publisherThread(ctx context.Context, wg *sync.WaitGroup, metricsWrapper *MetricsWrapper) {
 	defer wg.Done()
 
 	publisher := metrics.NewHTTPPublisher(service.settings.serverAddress, service.logger)
@@ -69,7 +68,7 @@ func (service *Service) publisherThread(wg *sync.WaitGroup, metricsWrapper *Metr
 			if err != nil {
 				service.logger.Errorf("Publish metrics error: %s", err)
 			}
-		case <-service.serviceCtx.Done():
+		case <-ctx.Done():
 			service.logger.Info("Publisher thread shutdown due to context closed")
 			return
 		}
