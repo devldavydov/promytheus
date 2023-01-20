@@ -14,7 +14,7 @@ func TestGaugeSetAndGet(t *testing.T) {
 	storage.SetGaugeMetric("foo", val)
 
 	res, err := storage.GetGaugeMetric("foo")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, val, res)
 }
 
@@ -31,7 +31,7 @@ func TestCounterSetNewAndGet(t *testing.T) {
 	storage.SetCounterMetric("foo", val)
 
 	res, err := storage.GetCounterMetric("foo")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, val, res)
 }
 
@@ -41,7 +41,7 @@ func TestCounterSetExistingAndGet(t *testing.T) {
 	storage.SetCounterMetric("foo", types.Counter(5))
 
 	res, err := storage.GetCounterMetric("foo")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, types.Counter(10), res)
 }
 
@@ -61,7 +61,7 @@ func TestGetAllMetrics(t *testing.T) {
 	storage.SetGaugeMetric("buzz", types.Gauge(1.23456))
 
 	items, err := storage.GetAllMetrics()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, []StorageItem{
 		{"bar", types.Counter(10)},
 		{"foo", types.Counter(5)},
