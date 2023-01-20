@@ -52,7 +52,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusNotFound,
-				body:        ResponsePageNotFound,
+				body:        "404 page not found\n",
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -64,7 +64,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusNotFound,
-				body:        ResponsePageNotFound,
+				body:        "404 page not found\n",
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -76,7 +76,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusNotImplemented,
-				body:        ResponseNotImplemented,
+				body:        http.StatusText(http.StatusNotImplemented),
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -88,7 +88,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
-				body:        ResponseBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -100,7 +100,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
-				body:        ResponseBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -112,7 +112,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
-				body:        ResponseBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -124,7 +124,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
-				body:        ResponseBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -136,7 +136,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
-				body:        ResponseBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -148,7 +148,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        ResponseOk,
+				body:        http.StatusText(http.StatusOK),
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -160,7 +160,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        ResponseOk,
+				body:        http.StatusText(http.StatusOK),
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -185,7 +185,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusNotImplemented,
-				body:        ResponseNotImplemented,
+				body:        http.StatusText(http.StatusNotImplemented),
 				contentType: ContentTypeTextPlain,
 			},
 		},
@@ -197,7 +197,7 @@ func TestMetricsHandler(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusNotFound,
-				body:        ResponseNotFound,
+				body:        http.StatusText(http.StatusNotFound),
 				contentType: ContentTypeTextPlain,
 			},
 		},

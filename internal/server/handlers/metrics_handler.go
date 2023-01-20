@@ -36,9 +36,9 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 		handler.logger.Errorf("Incorrect update request [%s], err: %v", req.URL, err)
 
 		if errors.As(err, &IncorrectURLUnknownMetricTypeP) {
-			handler.createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, ResponseNotImplemented)
+			handler.createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
 		} else {
-			handler.createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, ResponseBadRequest)
+			handler.createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		}
 		return
 	}
@@ -48,7 +48,7 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 	} else if types.CounterTypeName == params.metricType {
 		handler.storage.SetCounterMetric(params.metricName, params.counterValue)
 	}
-	handler.createResponse(rw, ContentTypeTextPlain, http.StatusOK, ResponseOk)
+	handler.createResponse(rw, ContentTypeTextPlain, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
 func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Request) {
@@ -59,9 +59,9 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 		handler.logger.Errorf("Incorrect get request [%s], err: %v", req.URL, err)
 
 		if errors.As(err, &IncorrectURLUnknownMetricTypeP) {
-			handler.createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, ResponseNotImplemented)
+			handler.createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
 		} else {
-			handler.createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, ResponseBadRequest)
+			handler.createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		}
 		return
 	}
@@ -75,10 +75,10 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 
 	if err != nil {
 		if errors.As(err, &storage.MetricNotFoundErrorP) {
-			handler.createResponse(rw, ContentTypeTextPlain, http.StatusNotFound, ResponseNotFound)
+			handler.createResponse(rw, ContentTypeTextPlain, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		} else {
 			handler.logger.Errorf("Get metric error on request [%s], err: %v", req.URL, err)
-			handler.createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, ResponseInternalServerError)
+			handler.createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		}
 	} else {
 		handler.createResponse(rw, ContentTypeTextPlain, http.StatusOK, value.String())
@@ -110,7 +110,7 @@ func (handler *MetricsHandler) GetMetrics(rw http.ResponseWriter, req *http.Requ
 	metrics, err := handler.storage.GetAllMetrics()
 	if err != nil {
 		handler.logger.Errorf("Get all metrics error: %v", err)
-		handler.createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, ResponseInternalServerError)
+		handler.createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	tmpl, _ := template.New("metrics").Parse(pageTemplate)
