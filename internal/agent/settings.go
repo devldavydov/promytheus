@@ -1,17 +1,25 @@
 package agent
 
-import "time"
+import (
+	"net/url"
+	"time"
+)
 
 type ServiceSettings struct {
-	serverAddress  string
+	serverAddress  *url.URL
 	pollInterval   time.Duration
 	reportInterval time.Duration
 }
 
-func NewServiceSettings(serverAddress string, pollInterval time.Duration, reportInterval time.Duration) ServiceSettings {
+func NewServiceSettings(serverAddress string, pollInterval time.Duration, reportInterval time.Duration) (ServiceSettings, error) {
+	url, err := url.ParseRequestURI(serverAddress)
+	if err != nil {
+		return ServiceSettings{}, err
+	}
+
 	return ServiceSettings{
-		serverAddress:  serverAddress,
+		serverAddress:  url,
 		pollInterval:   pollInterval,
 		reportInterval: reportInterval,
-	}
+	}, nil
 }

@@ -2,16 +2,11 @@ package metrics
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/sirupsen/logrus"
-)
-
-const (
-	httpClientTimeout time.Duration = 1 * time.Second
-	updateURLFormat   string        = "http://%s/update/%%s/%%s/%%s"
 )
 
 type Publisher interface {
@@ -19,25 +14,27 @@ type Publisher interface {
 }
 
 type HTTPPublisher struct {
-	serverAddress string
+	serverAddress *url.URL
 	httpClient    *http.Client
 	logger        *logrus.Logger
 }
 
-func NewHTTPPublisher(serverAddress string, logger *logrus.Logger) *HTTPPublisher {
-	client := &http.Client{}
-	client.Timeout = httpClientTimeout
+func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublisher {
+	client := &http.Client{
+		Timeout: 1 * time.Second,
+	}
 
 	return &HTTPPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}
 }
 
 func (httpPublisher *HTTPPublisher) Publish(metrics Metrics) error {
-	urlFormat := fmt.Sprintf(updateURLFormat, httpPublisher.serverAddress)
 	metricsSentCnt := 0
 
 	for _, m := range metrics.ToItemsList() {
-		requestURL := fmt.Sprintf(urlFormat, m.typeName, m.metricName, m.value)
-		request, err := http.NewRequest(http.MethodPost, requestURL, nil)
+		request, err := http.NewRequest(
+			http.MethodPost,
+			httpPublisher.serverAddress.JoinPath("update", m.typeName, m.metricName, m.value).String(),
+			nil)
 		if err != nil {
 			httpPublisher.logger.Errorf("Failed to create publish metrics request: %v", err)
 			continue
