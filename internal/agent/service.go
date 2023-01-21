@@ -38,9 +38,12 @@ func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup)
 
 	collector := metrics.NewRuntimeCollector(service.logger)
 
+	ticker := time.NewTicker(service.settings.pollInterval)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case <-time.After(service.settings.pollInterval):
+		case <-ticker.C:
 			service.logger.Debugf("Start collecting metrics")
 
 			metrics, err := collector.Collect()
@@ -64,9 +67,12 @@ func (service *Service) publisherThread(ctx context.Context, wg *sync.WaitGroup)
 
 	publisher := metrics.NewHTTPPublisher(service.settings.serverAddress, service.logger)
 
+	ticker := time.NewTicker(service.settings.reportInterval)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case <-time.After(service.settings.reportInterval):
+		case <-ticker.C:
 			service.logger.Debugf("Start reporting metrics")
 
 			service.mu.Lock()
