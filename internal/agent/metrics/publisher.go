@@ -46,7 +46,7 @@ func (httpPublisher *HTTPPublisher) Publish(metrics Metrics) error {
 			httpPublisher.logger.Errorf("Failed to publish metrics: %v", err)
 			continue
 		}
-		defer response.Body.Close()
+		response.Body.Close()
 
 		metricsSentCnt += 1
 	}
