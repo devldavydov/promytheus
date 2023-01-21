@@ -59,14 +59,25 @@ func (storage *MemStorage) GetAllMetrics() ([]StorageItem, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
-	var items []StorageItem
-	for name, value := range storage.counterStorage {
-		items = append(items, StorageItem{name, value})
-	}
-	for name, value := range storage.gaugeStorage {
-		items = append(items, StorageItem{name, value})
-	}
-	sort.Sort(StorageItemByMetricTypeName(items))
+	items := make([]StorageItem, 0, len(storage.counterStorage)+len(storage.gaugeStorage))
 
-	return items, nil
+	counterItems := sortItems(mapToItems(storage.counterStorage))
+	gaugeItems := sortItems(mapToItems(storage.gaugeStorage))
+
+	return append(append(items, counterItems...), gaugeItems...), nil
+}
+
+func mapToItems[V types.MetricValue](m map[string]V) []StorageItem {
+	result := make([]StorageItem, 0, len(m))
+	for k, v := range m {
+		result = append(result, StorageItem{k, v})
+	}
+	return result
+}
+
+func sortItems(items []StorageItem) []StorageItem {
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].MetricName < items[j].MetricName
+	})
+	return items
 }
