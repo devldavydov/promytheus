@@ -31,7 +31,7 @@ func (storage *MemStorage) GetGaugeMetric(metricName string) (types.Gauge, error
 
 	val, ok := storage.gaugeStorage[metricName]
 	if !ok {
-		return 0, &MetricNotFoundError{}
+		return 0, ErrorMetricNotFound
 	}
 	return val, nil
 }
@@ -50,7 +50,7 @@ func (storage *MemStorage) GetCounterMetric(metricName string) (types.Counter, e
 
 	val, ok := storage.counterStorage[metricName]
 	if !ok {
-		return 0, &MetricNotFoundError{}
+		return 0, ErrorMetricNotFound
 	}
 	return val, nil
 }

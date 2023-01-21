@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/devldavydov/promytheus/internal/common/types"
@@ -22,7 +21,7 @@ func TestGaugeGetUnknown(t *testing.T) {
 	storage := NewMemStorage()
 
 	_, err := storage.GetGaugeMetric("foo")
-	assert.True(t, errors.As(err, &MetricNotFoundErrorP))
+	assert.ErrorIs(t, err, ErrorMetricNotFound)
 }
 
 func TestCounterSetNewAndGet(t *testing.T) {
@@ -49,8 +48,7 @@ func TestCounterGetUnknown(t *testing.T) {
 	storage := NewMemStorage()
 
 	_, err := storage.GetCounterMetric("foo")
-	var notFoundErr *MetricNotFoundError
-	assert.True(t, errors.As(err, &notFoundErr))
+	assert.ErrorIs(t, err, ErrorMetricNotFound)
 }
 
 func TestGetAllMetrics(t *testing.T) {

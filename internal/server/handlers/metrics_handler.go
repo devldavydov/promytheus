@@ -35,7 +35,7 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 	if err != nil {
 		handler.logger.Errorf("Incorrect update request [%s], err: %v", req.URL, err)
 
-		if errors.As(err, &IncorrectURLUnknownMetricTypeP) {
+		if errors.Is(err, ErrorUnknownMetricType) {
 			handler.createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
 		} else {
 			handler.createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
@@ -58,7 +58,7 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 	if err != nil {
 		handler.logger.Errorf("Incorrect get request [%s], err: %v", req.URL, err)
 
-		if errors.As(err, &IncorrectURLUnknownMetricTypeP) {
+		if errors.Is(err, ErrorUnknownMetricType) {
 			handler.createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
 		} else {
 			handler.createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
@@ -74,7 +74,7 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 	}
 
 	if err != nil {
-		if errors.As(err, &storage.MetricNotFoundErrorP) {
+		if errors.Is(err, storage.ErrorMetricNotFound) {
 			handler.createResponse(rw, ContentTypeTextPlain, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		} else {
 			handler.logger.Errorf("Get metric error on request [%s], err: %v", req.URL, err)
@@ -121,17 +121,17 @@ func (handler *MetricsHandler) GetMetrics(rw http.ResponseWriter, req *http.Requ
 
 func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metricValue string) (requestParams, error) {
 	if !types.AllTypes[metricType] {
-		return requestParams{}, &IncorrectURLUnknownMetricType{err: "unknown metric type"}
+		return requestParams{}, ErrorUnknownMetricType
 	}
 
 	if len(metricName) == 0 {
-		return requestParams{}, &IncorrectURLEmptyMetricName{err: "empty metric name"}
+		return requestParams{}, ErrorEmptyMetricName
 	}
 
 	if types.GaugeTypeName == metricType {
 		gaugeVal, err := types.NewGaugeFromString(metricValue)
 		if err != nil {
-			return requestParams{}, &IncorrectURLWrongMetricValue{err: fmt.Sprintf("incorrect %s val", types.GaugeTypeName)}
+			return requestParams{}, fmt.Errorf("%w: incorrect %s", ErrorWrongMetricValue, types.GaugeTypeName)
 		}
 		return requestParams{
 			metricType: types.GaugeTypeName,
@@ -141,7 +141,7 @@ func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metric
 	} else if types.CounterTypeName == metricType {
 		counterVal, err := types.NewCounterFromString(metricValue)
 		if err != nil {
-			return requestParams{}, &IncorrectURLWrongMetricValue{fmt.Sprintf("incorrect %s val", types.CounterTypeName)}
+			return requestParams{}, fmt.Errorf("%w: incorrect %s", ErrorWrongMetricValue, types.CounterTypeName)
 		}
 		return requestParams{
 			metricType:   types.CounterTypeName,
@@ -155,7 +155,7 @@ func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metric
 
 func (handler *MetricsHandler) checkGetRequest(metricType, metricName string) error {
 	if !types.AllTypes[metricType] {
-		return &IncorrectURLUnknownMetricType{err: "unknown metric type"}
+		return ErrorUnknownMetricType
 	}
 	return nil
 }

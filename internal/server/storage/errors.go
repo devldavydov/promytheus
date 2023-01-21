@@ -1,11 +1,5 @@
 package storage
 
-type MetricNotFoundError struct {
-	err string
-}
+import "errors"
 
-func (e *MetricNotFoundError) Error() string {
-	return e.err
-}
-
-var MetricNotFoundErrorP *MetricNotFoundError
+var ErrorMetricNotFound = errors.New("metric not found")

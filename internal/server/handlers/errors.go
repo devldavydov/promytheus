@@ -1,31 +1,7 @@
 package handlers
 
-type IncorrectURLUnknownMetricType struct {
-	err string
-}
+import "errors"
 
-func (e *IncorrectURLUnknownMetricType) Error() string {
-	return e.err
-}
-
-var IncorrectURLUnknownMetricTypeP *IncorrectURLUnknownMetricType
-
-type IncorrectURLEmptyMetricName struct {
-	err string
-}
-
-func (e *IncorrectURLEmptyMetricName) Error() string {
-	return e.err
-}
-
-var IncorrectURLEmptyMetricNameP *IncorrectURLEmptyMetricName
-
-type IncorrectURLWrongMetricValue struct {
-	err string
-}
-
-func (e *IncorrectURLWrongMetricValue) Error() string {
-	return e.err
-}
-
-var IncorrectURLWrongMetricValueP *IncorrectURLWrongMetricValue
+var ErrorUnknownMetricType = errors.New("unknowm metric type")
+var ErrorEmptyMetricName = errors.New("empty metric name")
+var ErrorWrongMetricValue = errors.New("wrong metric value")
