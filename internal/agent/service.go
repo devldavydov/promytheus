@@ -5,19 +5,36 @@ import (
 	"sync"
 	"time"
 
-	"github.com/devldavydov/promytheus/internal/agent/metrics"
+	"github.com/devldavydov/promytheus/internal/agent/collector"
+	"github.com/devldavydov/promytheus/internal/agent/publisher"
+	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/sirupsen/logrus"
 )
+
+type Collector interface {
+	Collect() (metric.Metrics, error)
+}
+
+type Publisher interface {
+	Publish(metrics metric.Metrics) error
+}
 
 type Service struct {
 	mu             sync.Mutex
 	settings       ServiceSettings
 	logger         *logrus.Logger
-	currentMetrics metrics.Metrics
+	currentMetrics metric.Metrics
+	collector      Collector
+	publisher      Publisher
 }
 
 func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
-	return &Service{settings: settings, logger: logger}
+	return &Service{
+		settings:  settings,
+		logger:    logger,
+		collector: collector.NewRuntimeCollector(logger),
+		publisher: publisher.NewHTTPPublisher(settings.serverAddress, logger),
+	}
 }
 
 func (service *Service) Start(ctx context.Context) error {
@@ -37,8 +54,6 @@ func (service *Service) Start(ctx context.Context) error {
 func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	collector := metrics.NewRuntimeCollector(service.logger)
-
 	ticker := time.NewTicker(service.settings.pollInterval)
 	defer ticker.Stop()
 
@@ -47,7 +62,7 @@ func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup)
 		case <-ticker.C:
 			service.logger.Debugf("Start collecting metrics")
 
-			metrics, err := collector.Collect()
+			metrics, err := service.collector.Collect()
 			if err != nil {
 				service.logger.Errorf("Failed to collect metrics, err: %s", err)
 				continue
@@ -66,8 +81,6 @@ func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup)
 func (service *Service) publisherThread(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	publisher := metrics.NewHTTPPublisher(service.settings.serverAddress, service.logger)
-
 	ticker := time.NewTicker(service.settings.reportInterval)
 	defer ticker.Stop()
 
@@ -80,7 +93,7 @@ func (service *Service) publisherThread(ctx context.Context, wg *sync.WaitGroup)
 			metrics := service.currentMetrics
 			service.mu.Unlock()
 
-			err := publisher.Publish(metrics)
+			err := service.publisher.Publish(metrics)
 			if err != nil {
 				service.logger.Errorf("Publish metrics error: %s", err)
 			}

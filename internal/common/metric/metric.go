@@ -1,4 +1,4 @@
-package types
+package metric
 
 import "fmt"
 
@@ -11,3 +11,5 @@ type MetricValue interface {
 	fmt.Stringer
 	TypeName() string
 }
+
+type Metrics map[string]MetricValue

@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 const (
 	ContentTypeTextPlain string = "text/plain; charset=utf-8"

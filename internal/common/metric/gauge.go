@@ -1,4 +1,4 @@
-package types
+package metric
 
 import (
 	"strconv"

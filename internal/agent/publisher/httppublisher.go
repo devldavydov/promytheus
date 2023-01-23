@@ -1,4 +1,4 @@
-package metrics
+package publisher
 
 import (
 	"errors"
@@ -7,15 +7,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/devldavydov/promytheus/internal/common/types"
+	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/sirupsen/logrus"
 )
 
 const httpClientTimeout = 1 * time.Second
-
-type Publisher interface {
-	Publish(metrics Metrics) error
-}
 
 type HTTPPublisher struct {
 	serverAddress *url.URL
@@ -31,7 +27,7 @@ func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublis
 	return &HTTPPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}
 }
 
-func (httpPublisher *HTTPPublisher) Publish(metrics Metrics) error {
+func (httpPublisher *HTTPPublisher) Publish(metrics metric.Metrics) error {
 	metricsSentCnt := 0
 
 	var err error
@@ -51,7 +47,7 @@ func (httpPublisher *HTTPPublisher) Publish(metrics Metrics) error {
 	return nil
 }
 
-func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue types.MetricValue) error {
+func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue metric.MetricValue) error {
 	request, err := http.NewRequest(
 		http.MethodPost,
 		httpPublisher.serverAddress.JoinPath("update", metricValue.TypeName(), metricName, metricValue.String()).String(),

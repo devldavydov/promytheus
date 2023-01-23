@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/devldavydov/promytheus/internal/server/handlers"
+	"github.com/devldavydov/promytheus/internal/server/handler"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
@@ -25,11 +25,11 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 func (service *Service) Start(ctx context.Context) error {
 	service.logger.Info("Server service started")
 
-	metricsHandler := handlers.NewMetricsHandler(
+	metricsHandler := handler.NewMetricsHandler(
 		storage.NewMemStorage(),
 		service.logger,
 	)
-	r := handlers.NewRouter(metricsHandler, middleware.RealIP, middleware.Logger, middleware.Recoverer)
+	r := handler.NewRouter(metricsHandler, middleware.RealIP, middleware.Logger, middleware.Recoverer)
 
 	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: r}
 

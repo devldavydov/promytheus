@@ -1,4 +1,4 @@
-package handlers
+package handler
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"text/template"
 
-	"github.com/devldavydov/promytheus/internal/common/types"
+	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
@@ -22,8 +22,8 @@ type MetricsHandler struct {
 type requestParams struct {
 	metricType   string
 	metricName   string
-	gaugeValue   types.Gauge
-	counterValue types.Counter
+	gaugeValue   metric.Gauge
+	counterValue metric.Counter
 }
 
 func NewMetricsHandler(storage storage.Storage, logger *logrus.Logger) *MetricsHandler {
@@ -43,9 +43,9 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 		return
 	}
 
-	if types.GaugeTypeName == params.metricType {
+	if metric.GaugeTypeName == params.metricType {
 		handler.storage.SetGaugeMetric(params.metricName, params.gaugeValue)
-	} else if types.CounterTypeName == params.metricType {
+	} else if metric.CounterTypeName == params.metricType {
 		handler.storage.SetCounterMetric(params.metricName, params.counterValue)
 	}
 	handler.createResponse(rw, ContentTypeTextPlain, http.StatusOK, http.StatusText(http.StatusOK))
@@ -67,9 +67,9 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 	}
 
 	var value fmt.Stringer
-	if types.GaugeTypeName == metricType {
+	if metric.GaugeTypeName == metricType {
 		value, err = handler.storage.GetGaugeMetric(metricName)
-	} else if types.CounterTypeName == metricType {
+	} else if metric.CounterTypeName == metricType {
 		value, err = handler.storage.GetCounterMetric(metricName)
 	}
 
@@ -120,7 +120,7 @@ func (handler *MetricsHandler) GetMetrics(rw http.ResponseWriter, req *http.Requ
 }
 
 func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metricValue string) (requestParams, error) {
-	if !types.AllTypes[metricType] {
+	if !metric.AllTypes[metricType] {
 		return requestParams{}, ErrUnknownMetricType
 	}
 
@@ -128,23 +128,23 @@ func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metric
 		return requestParams{}, ErrEmptyMetricName
 	}
 
-	if types.GaugeTypeName == metricType {
-		gaugeVal, err := types.NewGaugeFromString(metricValue)
+	if metric.GaugeTypeName == metricType {
+		gaugeVal, err := metric.NewGaugeFromString(metricValue)
 		if err != nil {
-			return requestParams{}, fmt.Errorf("incorrect %s: %w", types.GaugeTypeName, ErrWrongMetricValue)
+			return requestParams{}, fmt.Errorf("incorrect %s: %w", metric.GaugeTypeName, ErrWrongMetricValue)
 		}
 		return requestParams{
-			metricType: types.GaugeTypeName,
+			metricType: metric.GaugeTypeName,
 			metricName: metricName,
 			gaugeValue: gaugeVal,
 		}, nil
-	} else if types.CounterTypeName == metricType {
-		counterVal, err := types.NewCounterFromString(metricValue)
+	} else if metric.CounterTypeName == metricType {
+		counterVal, err := metric.NewCounterFromString(metricValue)
 		if err != nil {
-			return requestParams{}, fmt.Errorf("incorrect %s: %w", types.CounterTypeName, ErrWrongMetricValue)
+			return requestParams{}, fmt.Errorf("incorrect %s: %w", metric.CounterTypeName, ErrWrongMetricValue)
 		}
 		return requestParams{
-			metricType:   types.CounterTypeName,
+			metricType:   metric.CounterTypeName,
 			metricName:   metricName,
 			counterValue: counterVal,
 		}, nil
@@ -154,7 +154,7 @@ func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metric
 }
 
 func (handler *MetricsHandler) checkGetRequest(metricType string) error {
-	if !types.AllTypes[metricType] {
+	if !metric.AllTypes[metricType] {
 		return ErrUnknownMetricType
 	}
 	return nil

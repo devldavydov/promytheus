@@ -3,13 +3,13 @@ package storage
 import (
 	"testing"
 
-	"github.com/devldavydov/promytheus/internal/common/types"
+	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGaugeSetAndGet(t *testing.T) {
 	storage := NewMemStorage()
-	val := types.Gauge(123.456)
+	val := metric.Gauge(123.456)
 	storage.SetGaugeMetric("foo", val)
 
 	res, err := storage.GetGaugeMetric("foo")
@@ -26,7 +26,7 @@ func TestGaugeGetUnknown(t *testing.T) {
 
 func TestCounterSetNewAndGet(t *testing.T) {
 	storage := NewMemStorage()
-	val := types.Counter(5)
+	val := metric.Counter(5)
 	storage.SetCounterMetric("foo", val)
 
 	res, err := storage.GetCounterMetric("foo")
@@ -36,12 +36,12 @@ func TestCounterSetNewAndGet(t *testing.T) {
 
 func TestCounterSetExistingAndGet(t *testing.T) {
 	storage := NewMemStorage()
-	storage.SetCounterMetric("foo", types.Counter(5))
-	storage.SetCounterMetric("foo", types.Counter(5))
+	storage.SetCounterMetric("foo", metric.Counter(5))
+	storage.SetCounterMetric("foo", metric.Counter(5))
 
 	res, err := storage.GetCounterMetric("foo")
 	assert.NoError(t, err)
-	assert.Equal(t, types.Counter(10), res)
+	assert.Equal(t, metric.Counter(10), res)
 }
 
 func TestCounterGetUnknown(t *testing.T) {
@@ -53,17 +53,17 @@ func TestCounterGetUnknown(t *testing.T) {
 
 func TestGetAllMetrics(t *testing.T) {
 	storage := NewMemStorage()
-	storage.SetCounterMetric("foo", types.Counter(5))
-	storage.SetCounterMetric("bar", types.Counter(10))
-	storage.SetGaugeMetric("fuzz", types.Gauge(0))
-	storage.SetGaugeMetric("buzz", types.Gauge(1.23456))
+	storage.SetCounterMetric("foo", metric.Counter(5))
+	storage.SetCounterMetric("bar", metric.Counter(10))
+	storage.SetGaugeMetric("fuzz", metric.Gauge(0))
+	storage.SetGaugeMetric("buzz", metric.Gauge(1.23456))
 
 	items, err := storage.GetAllMetrics()
 	assert.NoError(t, err)
 	assert.Equal(t, []StorageItem{
-		{"bar", types.Counter(10)},
-		{"foo", types.Counter(5)},
-		{"buzz", types.Gauge(1.23456)},
-		{"fuzz", types.Gauge(0)},
+		{"bar", metric.Counter(10)},
+		{"foo", metric.Counter(5)},
+		{"buzz", metric.Gauge(1.23456)},
+		{"fuzz", metric.Gauge(0)},
 	}, items)
 }

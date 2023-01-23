@@ -4,20 +4,20 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/devldavydov/promytheus/internal/common/types"
+	"github.com/devldavydov/promytheus/internal/common/metric"
 )
 
 type MemStorage struct {
 	mu             sync.Mutex
-	gaugeStorage   map[string]types.Gauge
-	counterStorage map[string]types.Counter
+	gaugeStorage   map[string]metric.Gauge
+	counterStorage map[string]metric.Counter
 }
 
 func NewMemStorage() *MemStorage {
-	return &MemStorage{gaugeStorage: make(map[string]types.Gauge), counterStorage: make(map[string]types.Counter)}
+	return &MemStorage{gaugeStorage: make(map[string]metric.Gauge), counterStorage: make(map[string]metric.Counter)}
 }
 
-func (storage *MemStorage) SetGaugeMetric(metricName string, value types.Gauge) error {
+func (storage *MemStorage) SetGaugeMetric(metricName string, value metric.Gauge) error {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
@@ -25,7 +25,7 @@ func (storage *MemStorage) SetGaugeMetric(metricName string, value types.Gauge) 
 	return nil
 }
 
-func (storage *MemStorage) GetGaugeMetric(metricName string) (types.Gauge, error) {
+func (storage *MemStorage) GetGaugeMetric(metricName string) (metric.Gauge, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
@@ -36,7 +36,7 @@ func (storage *MemStorage) GetGaugeMetric(metricName string) (types.Gauge, error
 	return val, nil
 }
 
-func (storage *MemStorage) SetCounterMetric(metricName string, value types.Counter) error {
+func (storage *MemStorage) SetCounterMetric(metricName string, value metric.Counter) error {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
@@ -44,7 +44,7 @@ func (storage *MemStorage) SetCounterMetric(metricName string, value types.Count
 	return nil
 }
 
-func (storage *MemStorage) GetCounterMetric(metricName string) (types.Counter, error) {
+func (storage *MemStorage) GetCounterMetric(metricName string) (metric.Counter, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
@@ -67,7 +67,7 @@ func (storage *MemStorage) GetAllMetrics() ([]StorageItem, error) {
 	return append(append(items, counterItems...), gaugeItems...), nil
 }
 
-func mapToItems[V types.MetricValue](m map[string]V) []StorageItem {
+func mapToItems[V metric.MetricValue](m map[string]V) []StorageItem {
 	result := make([]StorageItem, 0, len(m))
 	for k, v := range m {
 		result = append(result, StorageItem{k, v})
