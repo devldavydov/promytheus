@@ -54,7 +54,7 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Request) {
 	metricType, metricName := chi.URLParam(req, "metricType"), chi.URLParam(req, "metricName")
 
-	err := handler.checkGetRequest(metricType, metricName)
+	err := handler.checkGetRequest(metricType)
 	if err != nil {
 		handler.logger.Errorf("Incorrect get request [%s], err: %v", req.URL, err)
 
@@ -131,7 +131,7 @@ func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metric
 	if types.GaugeTypeName == metricType {
 		gaugeVal, err := types.NewGaugeFromString(metricValue)
 		if err != nil {
-			return requestParams{}, fmt.Errorf("%w: incorrect %s", ErrWrongMetricValue, types.GaugeTypeName)
+			return requestParams{}, fmt.Errorf("incorrect %s: %w", types.GaugeTypeName, ErrWrongMetricValue)
 		}
 		return requestParams{
 			metricType: types.GaugeTypeName,
@@ -141,7 +141,7 @@ func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metric
 	} else if types.CounterTypeName == metricType {
 		counterVal, err := types.NewCounterFromString(metricValue)
 		if err != nil {
-			return requestParams{}, fmt.Errorf("%w: incorrect %s", ErrWrongMetricValue, types.CounterTypeName)
+			return requestParams{}, fmt.Errorf("incorrect %s: %w", types.CounterTypeName, ErrWrongMetricValue)
 		}
 		return requestParams{
 			metricType:   types.CounterTypeName,
@@ -153,7 +153,7 @@ func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metric
 	return requestParams{}, nil
 }
 
-func (handler *MetricsHandler) checkGetRequest(metricType, metricName string) error {
+func (handler *MetricsHandler) checkGetRequest(metricType string) error {
 	if !types.AllTypes[metricType] {
 		return ErrUnknownMetricType
 	}
