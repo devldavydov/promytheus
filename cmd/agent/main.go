@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/devldavydov/promytheus/internal/agent"
-	"github.com/devldavydov/promytheus/internal/common/helpers"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,6 +21,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	agentService := agent.NewService(agentSettings, logger)
-	agentService.Start(helpers.CreateContextWithSignalHadler(context.Background()))
+	agentService.Start(ctx)
 }
