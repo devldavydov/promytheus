@@ -21,7 +21,7 @@ func TestGaugeGetUnknown(t *testing.T) {
 	storage := NewMemStorage()
 
 	_, err := storage.GetGaugeMetric("foo")
-	assert.ErrorIs(t, err, ErrorMetricNotFound)
+	assert.ErrorIs(t, err, ErrMetricNotFound)
 }
 
 func TestCounterSetNewAndGet(t *testing.T) {
@@ -48,7 +48,7 @@ func TestCounterGetUnknown(t *testing.T) {
 	storage := NewMemStorage()
 
 	_, err := storage.GetCounterMetric("foo")
-	assert.ErrorIs(t, err, ErrorMetricNotFound)
+	assert.ErrorIs(t, err, ErrMetricNotFound)
 }
 
 func TestGetAllMetrics(t *testing.T) {

@@ -2,4 +2,4 @@ package storage
 
 import "errors"
 
-var ErrorMetricNotFound = errors.New("metric not found")
+var ErrMetricNotFound = errors.New("metric not found")
