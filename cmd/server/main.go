@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -19,5 +20,10 @@ func main() {
 
 	serverSettings := server.NewServiceSettings("127.0.0.1", 8080)
 	serverService := server.NewService(serverSettings, 5*time.Second, logger)
-	serverService.Start(ctx)
+
+	err := serverService.Start(ctx)
+	if err != nil {
+		logger.Error(err)
+		os.Exit(1)
+	}
 }

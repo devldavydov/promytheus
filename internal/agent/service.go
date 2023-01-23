@@ -20,7 +20,7 @@ func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 	return &Service{settings: settings, logger: logger}
 }
 
-func (service *Service) Start(ctx context.Context) {
+func (service *Service) Start(ctx context.Context) error {
 	service.logger.Info("Agent service started")
 
 	var wg sync.WaitGroup
@@ -31,6 +31,7 @@ func (service *Service) Start(ctx context.Context) {
 	wg.Wait()
 
 	service.logger.Info("Agent service finished")
+	return nil
 }
 
 func (service *Service) collectorThread(ctx context.Context, wg *sync.WaitGroup) {

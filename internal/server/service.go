@@ -22,7 +22,7 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 	return &Service{settings: settings, shutdownTimeout: shutdownTimeout, logger: logger}
 }
 
-func (service *Service) Start(ctx context.Context) {
+func (service *Service) Start(ctx context.Context) error {
 	service.logger.Info("Server service started")
 
 	metricsHandler := handlers.NewMetricsHandler(
@@ -40,8 +40,7 @@ func (service *Service) Start(ctx context.Context) {
 
 	select {
 	case err := <-errChan:
-		service.logger.Errorf("Server service exited with err: %v", err)
-		return
+		return fmt.Errorf("server service exited with err: %w", err)
 	case <-ctx.Done():
 		service.logger.Infof("Server service context canceled")
 
@@ -50,11 +49,11 @@ func (service *Service) Start(ctx context.Context) {
 
 		err := httpServer.Shutdown(ctx)
 		if err != nil {
-			service.logger.Errorf("Shutdown error: %v", err)
+			return fmt.Errorf("server service shutdown err: %w", err)
 		}
 
 		service.logger.Info("Server service finished")
-		return
+		return nil
 	}
 }
 
