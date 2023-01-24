@@ -1,7 +1,6 @@
 package publisher
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -27,24 +26,23 @@ func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublis
 	return &HTTPPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}
 }
 
-func (httpPublisher *HTTPPublisher) Publish(metrics metric.Metrics) error {
-	metricsSentCnt := 0
-
+func (httpPublisher *HTTPPublisher) Publish(metrics metric.Metrics) (metric.Metrics, error) {
+	var failedPublishMetrics = make(metric.Metrics)
 	var err error
+
+	httpPublisher.logger.Debugf("Publishing metrics: %+v", metrics)
+
 	for name, value := range metrics {
 		err = httpPublisher.publishMetric(name, value)
 		if err != nil {
-			httpPublisher.logger.Errorf("Failed to publish metric: %v", err)
-			continue
+			failedPublishMetrics[name] = value
 		}
-
-		metricsSentCnt += 1
 	}
 
-	if metricsSentCnt == 0 {
-		return errors.New("failed to publish all metrics")
+	if len(failedPublishMetrics) != 0 {
+		err = fmt.Errorf("failed to publish: %+v", failedPublishMetrics)
 	}
-	return nil
+	return failedPublishMetrics, err
 }
 
 func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue metric.MetricValue) error {

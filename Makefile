@@ -15,12 +15,17 @@ build_server:
 	@cd cmd/server && go build .
 
 .PHONY: test
-test: test_units test_devops
+test: test_units test_static test_devops
 
 .PHONY: test_units
 test_units: 
 	@echo "\n### $@"
 	@go test ./... -v --count 1
+
+.PHONY: test_static
+test_static:
+	@echo "\n### $@"
+	@go vet -vettool=./statictest ./...
 
 .PHONY: test_devops
 test_devops: build

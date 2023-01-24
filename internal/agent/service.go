@@ -16,7 +16,7 @@ type Collector interface {
 }
 
 type Publisher interface {
-	Publish(metrics metric.Metrics) error
+	Publish(metrics metric.Metrics) (metric.Metrics, error)
 }
 
 type Service struct {
@@ -24,16 +24,18 @@ type Service struct {
 	settings       ServiceSettings
 	logger         *logrus.Logger
 	currentMetrics metric.Metrics
+	lastCounters   map[string]metric.Counter
 	collector      Collector
 	publisher      Publisher
 }
 
 func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 	return &Service{
-		settings:  settings,
-		logger:    logger,
-		collector: collector.NewRuntimeCollector(logger),
-		publisher: publisher.NewHTTPPublisher(settings.serverAddress, logger),
+		settings:     settings,
+		logger:       logger,
+		lastCounters: make(map[string]metric.Counter),
+		collector:    collector.NewRuntimeCollector(logger),
+		publisher:    publisher.NewHTTPPublisher(settings.serverAddress, logger),
 	}
 }
 
@@ -93,13 +95,38 @@ func (service *Service) publisherThread(ctx context.Context, wg *sync.WaitGroup)
 			metrics := service.currentMetrics
 			service.mu.Unlock()
 
-			err := service.publisher.Publish(metrics)
+			failedPublishMetrics, err := service.publisher.Publish(service.createMetricsToSend(metrics))
 			if err != nil {
-				service.logger.Errorf("Publish metrics error: %s", err)
+				service.logger.Errorf("Publish metrics error: %v", err)
 			}
+			service.updateLastCounters(metrics, failedPublishMetrics)
 		case <-ctx.Done():
 			service.logger.Info("Publisher thread shutdown due to context closed")
 			return
+		}
+	}
+}
+
+func (service *Service) createMetricsToSend(metrics metric.Metrics) metric.Metrics {
+	metricsToSend := make(metric.Metrics, len(metrics))
+	for name, value := range metrics {
+		if metric.CounterTypeName == value.TypeName() {
+			// Create delta for counter = current value - last send value
+			metricsToSend[name] = metrics[name].(metric.Counter) - service.lastCounters[name]
+		} else if metric.GaugeTypeName == value.TypeName() {
+			metricsToSend[name] = metrics[name]
+		}
+	}
+	return metricsToSend
+}
+
+func (service *Service) updateLastCounters(metrics metric.Metrics, failedPublishMetrics metric.Metrics) {
+	for name, value := range metrics {
+		if metric.CounterTypeName == value.TypeName() {
+			_, ok := failedPublishMetrics[name]
+			if !ok {
+				service.lastCounters[name] = value.(metric.Counter)
+			}
 		}
 	}
 }
