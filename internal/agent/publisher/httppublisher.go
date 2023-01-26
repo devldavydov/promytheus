@@ -26,23 +26,24 @@ func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublis
 	return &HTTPPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}
 }
 
-func (httpPublisher *HTTPPublisher) Publish(metrics metric.Metrics) (metric.Metrics, error) {
+func (httpPublisher *HTTPPublisher) Publish(metricsList []metric.Metrics) (metric.Metrics, error) {
 	var failedPublishMetrics = make(metric.Metrics)
 	var err error
 
-	httpPublisher.logger.Debugf("Publishing metrics: %+v", metrics)
+	httpPublisher.logger.Debugf("Publishing metrics: %+v", metricsList)
 
-	for name, value := range metrics {
+	iterateMetrics(metricsList, func(name string, value metric.MetricValue) {
 		err = httpPublisher.publishMetric(name, value)
 		if err != nil {
 			failedPublishMetrics[name] = value
 		}
-	}
+	})
 
 	if len(failedPublishMetrics) != 0 {
-		err = fmt.Errorf("failed to publish: %+v", failedPublishMetrics)
+		return failedPublishMetrics, fmt.Errorf("failed to publish: %+v", failedPublishMetrics)
+	} else {
+		return nil, nil
 	}
-	return failedPublishMetrics, err
 }
 
 func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue metric.MetricValue) error {
@@ -63,4 +64,12 @@ func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue
 	defer response.Body.Close()
 
 	return nil
+}
+
+func iterateMetrics(metricsList []metric.Metrics, fn func(name string, value metric.MetricValue)) {
+	for _, metrics := range metricsList {
+		for name, value := range metrics {
+			fn(name, value)
+		}
+	}
 }

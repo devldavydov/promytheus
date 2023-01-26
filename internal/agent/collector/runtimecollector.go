@@ -1,29 +1,58 @@
 package collector
 
 import (
+	"context"
 	"math/rand"
 	"runtime"
+	"sync"
+	"time"
 
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/sirupsen/logrus"
 )
 
 type RuntimeCollector struct {
-	collectCnt int64
-	logger     *logrus.Logger
+	mu             sync.Mutex
+	pollCnt        int64
+	pollInterval   time.Duration
+	currentMetrics metric.Metrics
+	logger         *logrus.Logger
 }
 
-func NewRuntimeCollector(logger *logrus.Logger) *RuntimeCollector {
-	return &RuntimeCollector{collectCnt: 0, logger: logger}
+func NewRuntimeCollector(pollInterval time.Duration, logger *logrus.Logger) *RuntimeCollector {
+	return &RuntimeCollector{pollCnt: 0, pollInterval: pollInterval, logger: logger}
 }
 
-func (c *RuntimeCollector) Collect() (metric.Metrics, error) {
-	c.collectCnt += 1
+func (rc *RuntimeCollector) Start(ctx context.Context) {
+	ticker := time.NewTicker(rc.pollInterval)
+	defer ticker.Stop()
 
+	for {
+		select {
+		case <-ticker.C:
+			rc.mu.Lock()
+
+			metrics, err := rc.getRuntimeMetrics()
+			if err != nil {
+				rc.logger.Errorf("Failed to get runtime metrics: %v", err)
+				continue
+			}
+			rc.currentMetrics = metrics
+
+			rc.mu.Unlock()
+		case <-ctx.Done():
+			rc.logger.Info("Collector thread shutdown due to context closed")
+			return
+		}
+	}
+}
+
+func (rc *RuntimeCollector) getRuntimeMetrics() (metric.Metrics, error) {
+	rc.pollCnt += 1
 	memStats := runtime.MemStats{}
 	runtime.ReadMemStats(&memStats)
 
-	metrics := metric.Metrics{
+	return metric.Metrics{
 		"Alloc":         metric.Gauge(memStats.Alloc),
 		"BuckHashSys":   metric.Gauge(memStats.BuckHashSys),
 		"Frees":         metric.Gauge(memStats.Frees),
@@ -51,11 +80,18 @@ func (c *RuntimeCollector) Collect() (metric.Metrics, error) {
 		"StackSys":      metric.Gauge(memStats.StackSys),
 		"Sys":           metric.Gauge(memStats.Sys),
 		"TotalAlloc":    metric.Gauge(memStats.TotalAlloc),
-		"PollCount":     metric.Counter(c.collectCnt),
+		"PollCount":     metric.Counter(rc.pollCnt),
 		"RandomValue":   metric.Gauge(rand.Float64()),
-	}
+	}, nil
+}
 
-	c.logger.Debugf("Collected metrics: %+v", metrics)
+func (rc *RuntimeCollector) Collect() (metric.Metrics, error) {
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
 
-	return metrics, nil
+	rc.pollCnt = 0
+
+	rc.logger.Debugf("Collected metrics: %+v", rc.currentMetrics)
+
+	return rc.currentMetrics, nil
 }
