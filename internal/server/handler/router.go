@@ -10,7 +10,9 @@ func NewRouter(metricsHanlder *MetricsHandler, middlewares ...func(http.Handler)
 	r := chi.NewRouter()
 	r.Use(middlewares...)
 	r.Post("/update/{metricType}/{metricName}/{metricValue}", metricsHanlder.UpdateMetric)
+	r.Post("/update/", metricsHanlder.UpdateMetricJSON)
 	r.Get("/value/{metricType}/{metricName}", metricsHanlder.GetMetric)
+	r.Post("/value/", metricsHanlder.GetMetricJSON)
 	r.Get("/", metricsHanlder.GetMetrics)
 	return r
 }
