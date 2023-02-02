@@ -1,11 +1,14 @@
 package publisher
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"time"
 
+	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/sirupsen/logrus"
 )
@@ -47,15 +50,28 @@ func (httpPublisher *HTTPPublisher) Publish(metricsList []metric.Metrics) (metri
 }
 
 func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue metric.MetricValue) error {
+	metricReq := metric.MetricsDTO{
+		ID:    metricName,
+		MType: metricValue.TypeName(),
+	}
+
+	if metric.GaugeTypeName == metricValue.TypeName() {
+		metricReq.Value = metricValue.(metric.Gauge).FloatP()
+	} else if metric.CounterTypeName == metricValue.TypeName() {
+		metricReq.Delta = metricValue.(metric.Counter).IntP()
+	}
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(metricReq)
+
 	request, err := http.NewRequest(
 		http.MethodPost,
-		httpPublisher.serverAddress.JoinPath("update", metricValue.TypeName(), metricName, metricValue.String()).String(),
-		nil)
+		httpPublisher.serverAddress.JoinPath("update/").String(),
+		&buf)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	request.Header.Set("Content-Type", "text/plain")
+	request.Header.Set("Content-Type", _http.ContentTypeApplicationJSON)
 
 	response, err := httpPublisher.httpClient.Do(request)
 	if err != nil {

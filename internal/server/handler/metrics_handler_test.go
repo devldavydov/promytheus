@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/devldavydov/promytheus/tests/data"
 	"github.com/sirupsen/logrus"
@@ -58,7 +59,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotFound,
 				body:        "404 page not found\n",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -70,7 +71,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotFound,
 				body:        "404 page not found\n",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -82,7 +83,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotImplemented,
 				body:        http.StatusText(http.StatusNotImplemented),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -94,7 +95,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -106,7 +107,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -118,7 +119,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -130,7 +131,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -142,7 +143,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -154,7 +155,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        http.StatusText(http.StatusOK),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -166,7 +167,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        http.StatusText(http.StatusOK),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		/// Update JSON metrics test
@@ -176,7 +177,7 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodGet,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "gauge", "value": 123.0}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusMethodNotAllowed,
@@ -190,12 +191,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "fuzz", "value": 123.0}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusNotImplemented,
 				body:        http.StatusText(http.StatusNotImplemented),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -204,12 +205,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "", "type": "gauge", "value": 123.0}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -218,12 +219,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "gauge", "value": "abc"}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -232,12 +233,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "gauge", "delta": 123.0}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -246,12 +247,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "counter", "value": 123}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -260,12 +261,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "counter", "delta": 123.0}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -274,12 +275,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "counter", "delta": -123}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -288,12 +289,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "gauge", "value": 123.0}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        `{"id":"foo","type":"gauge","value":123}` + "\n",
-				contentType: ContentTypeApplicationJSON,
+				contentType: _http.ContentTypeApplicationJSON,
 			},
 		},
 		{
@@ -302,12 +303,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "counter", "delta": 123}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        `{"id":"foo","type":"counter","delta":123}` + "\n",
-				contentType: ContentTypeApplicationJSON,
+				contentType: _http.ContentTypeApplicationJSON,
 			},
 		},
 		{
@@ -316,12 +317,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/update/",
 				body:        s(`{"id": "foo", "type": "counter", "delta": 123}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        `{"id":"foo","type":"counter","delta":246}` + "\n",
-				contentType: ContentTypeApplicationJSON,
+				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("foo", 123)
@@ -349,7 +350,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotImplemented,
 				body:        http.StatusText(http.StatusNotImplemented),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -361,7 +362,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotFound,
 				body:        http.StatusText(http.StatusNotFound),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -373,7 +374,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        "123",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("metric1", 123)
@@ -388,7 +389,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        "1.230",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("metric1", 1.23)
@@ -403,7 +404,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        "1.235",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("metric1", 1.23456)
@@ -416,7 +417,7 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodGet,
 				url:         "/value/",
 				body:        s(`{"id": "foo", "type": "gauge"}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusMethodNotAllowed,
@@ -430,12 +431,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/value/",
 				body:        s(`{"id": "foo", "type": "fuzz"}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusNotImplemented,
 				body:        http.StatusText(http.StatusNotImplemented),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -444,12 +445,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/value/",
 				body:        s(`{"id": "foo", "type": "counter"}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusNotFound,
 				body:        http.StatusText(http.StatusNotFound),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -458,12 +459,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/value/",
 				body:        s(`{"id": "foo", "type": "gauge"}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        `{"id":"foo","type":"gauge","value":123}` + "\n",
-				contentType: ContentTypeApplicationJSON,
+				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("foo", 123.0)
@@ -475,12 +476,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/value/",
 				body:        s(`{"id": "foo", "type": "gauge"}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        `{"id":"foo","type":"gauge","value":1.23456}` + "\n",
-				contentType: ContentTypeApplicationJSON,
+				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("foo", 1.23456)
@@ -492,12 +493,12 @@ func TestMetricsHandler(t *testing.T) {
 				method:      http.MethodPost,
 				url:         "/value/",
 				body:        s(`{"id": "foo", "type": "counter"}`),
-				contentType: s(ContentTypeApplicationJSON),
+				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        `{"id":"foo","type":"counter","delta":123}` + "\n",
-				contentType: ContentTypeApplicationJSON,
+				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("foo", 123)
@@ -513,7 +514,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        data.AllMetricsEmptyResponse,
-				contentType: ContentTypeHTML,
+				contentType: _http.ContentTypeHTML,
 			},
 		},
 		{
@@ -525,7 +526,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        data.AllMetricsResponseWithData,
-				contentType: ContentTypeHTML,
+				contentType: _http.ContentTypeHTML,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("foo", 1.23456)

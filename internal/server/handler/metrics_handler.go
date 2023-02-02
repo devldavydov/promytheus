@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"text/template"
 
+	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5"
@@ -29,9 +30,9 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 		handler.logger.Errorf("Incorrect update metric request [%s], err: %v", req.URL, err)
 
 		if errors.Is(err, ErrUnknownMetricType) {
-			createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
 		} else {
-			createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		}
 		return
 	}
@@ -44,9 +45,9 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 
 	if err != nil {
 		handler.logger.Errorf("Update metric error on request [%s], err: %v", req.URL, err)
-		createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	} else {
-		createResponse(rw, ContentTypeTextPlain, http.StatusOK, http.StatusText(http.StatusOK))
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusOK, http.StatusText(http.StatusOK))
 	}
 }
 
@@ -55,7 +56,7 @@ func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *htt
 
 	err := json.NewDecoder(req.Body).Decode(&metricReq)
 	if err != nil {
-		createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 
@@ -64,9 +65,9 @@ func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *htt
 		handler.logger.Errorf("Incorrect update metric request [%s], JSON: [%v] , err: %v", req.URL, metricReq, err)
 
 		if errors.Is(err, ErrUnknownMetricType) {
-			createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
 		} else {
-			createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		}
 		return
 	}
@@ -82,7 +83,7 @@ func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *htt
 
 	if err != nil {
 		handler.logger.Errorf("Update metric error on request [%s], JSON: [%v], err: %v", req.URL, metricReq, err)
-		createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	} else {
 		if metric.GaugeTypeName == params.metricType {
 			metricResp.Value = val.(metric.Gauge).FloatP()
@@ -101,9 +102,9 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 		handler.logger.Errorf("Incorrect get metric request [%s], err: %v", req.URL, err)
 
 		if errors.Is(err, ErrUnknownMetricType) {
-			createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
 		} else {
-			createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		}
 		return
 	}
@@ -117,13 +118,13 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 
 	if err != nil {
 		if errors.Is(err, storage.ErrMetricNotFound) {
-			createResponse(rw, ContentTypeTextPlain, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		} else {
 			handler.logger.Errorf("Get metric error on request [%s], err: %v", req.URL, err)
-			createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		}
 	} else {
-		createResponse(rw, ContentTypeTextPlain, http.StatusOK, value.String())
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusOK, value.String())
 	}
 }
 
@@ -132,7 +133,7 @@ func (handler *MetricsHandler) GetMetricJSON(rw http.ResponseWriter, req *http.R
 
 	err := json.NewDecoder(req.Body).Decode(&metricReq)
 	if err != nil {
-		createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 
@@ -141,9 +142,9 @@ func (handler *MetricsHandler) GetMetricJSON(rw http.ResponseWriter, req *http.R
 		handler.logger.Errorf("Incorrect get metric request [%s], JSON: [%v], err: %v", req.URL, metricReq, err)
 
 		if errors.Is(err, ErrUnknownMetricType) {
-			createResponse(rw, ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
 		} else {
-			createResponse(rw, ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		}
 		return
 	}
@@ -159,10 +160,10 @@ func (handler *MetricsHandler) GetMetricJSON(rw http.ResponseWriter, req *http.R
 
 	if err != nil {
 		if errors.Is(err, storage.ErrMetricNotFound) {
-			createResponse(rw, ContentTypeTextPlain, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		} else {
 			handler.logger.Errorf("Get metric error on request [%s], JSON: [%v] err: %v", req.URL, metricReq, err)
-			createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		}
 	} else {
 		if metric.GaugeTypeName == metricReq.MType {
@@ -199,11 +200,11 @@ func (handler *MetricsHandler) GetMetrics(rw http.ResponseWriter, req *http.Requ
 	metrics, err := handler.storage.GetAllMetrics()
 	if err != nil {
 		handler.logger.Errorf("Get all metrics error: %v", err)
-		createResponse(rw, ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	tmpl, _ := template.New("metrics").Parse(pageTemplate)
 	buf := new(bytes.Buffer)
 	tmpl.Execute(buf, metrics)
-	createResponse(rw, ContentTypeHTML, http.StatusOK, buf.String())
+	createResponse(rw, _http.ContentTypeHTML, http.StatusOK, buf.String())
 }

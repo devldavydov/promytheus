@@ -5,18 +5,14 @@ import (
 	"errors"
 	"io"
 	"net/http"
+
+	_http "github.com/devldavydov/promytheus/internal/common/http"
 )
 
 var (
 	ErrUnknownMetricType = errors.New("unknowm metric type")
 	ErrEmptyMetricName   = errors.New("empty metric name")
 	ErrWrongMetricValue  = errors.New("wrong metric value")
-)
-
-const (
-	ContentTypeApplicationJSON string = "application/json; charset=utf-8"
-	ContentTypeTextPlain       string = "text/plain; charset=utf-8"
-	ContentTypeHTML            string = "text/html; charset=utf-8"
 )
 
 func createResponse(rw http.ResponseWriter, contentType string, statusCode int, body string) {
@@ -26,7 +22,7 @@ func createResponse(rw http.ResponseWriter, contentType string, statusCode int, 
 }
 
 func createJSONResponse(rw http.ResponseWriter, statusCode int, body interface{}) {
-	rw.Header().Set("Content-Type", ContentTypeApplicationJSON)
+	rw.Header().Set("Content-Type", _http.ContentTypeApplicationJSON)
 	rw.WriteHeader(statusCode)
 	json.NewEncoder(rw).Encode(body)
 }
