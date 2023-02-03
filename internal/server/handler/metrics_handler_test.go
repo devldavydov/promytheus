@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/devldavydov/promytheus/tests/data"
 	"github.com/sirupsen/logrus"
@@ -20,11 +22,15 @@ type testResponse struct {
 }
 
 type testRequest struct {
-	method string
-	url    string
+	method      string
+	url         string
+	body        *string
+	contentType *string
 }
 
 func TestMetricsHandler(t *testing.T) {
+	s := func(s string) *string { return &s }
+
 	tests := []struct {
 		name        string
 		req         testRequest
@@ -53,7 +59,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotFound,
 				body:        "404 page not found\n",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -65,7 +71,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotFound,
 				body:        "404 page not found\n",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -77,7 +83,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotImplemented,
 				body:        http.StatusText(http.StatusNotImplemented),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -89,7 +95,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -101,7 +107,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -113,7 +119,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -125,7 +131,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -137,7 +143,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -149,7 +155,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        http.StatusText(http.StatusOK),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -161,7 +167,165 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        http.StatusText(http.StatusOK),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		/// Update JSON metrics test
+		{
+			name: "update JSON metric: failed GET request",
+			req: testRequest{
+				method:      http.MethodGet,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "gauge", "value": 123.0}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusMethodNotAllowed,
+				body:        "",
+				contentType: "",
+			},
+		},
+		{
+			name: "update JSON metric: unknown metric type",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "fuzz", "value": 123.0}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusNotImplemented,
+				body:        http.StatusText(http.StatusNotImplemented),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "update JSON metric: empty metric name",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "", "type": "gauge", "value": 123.0}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "update JSON metric: incorrect gauge val, #1",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "gauge", "value": "abc"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "update JSON metric: incorrect gauge val, #2",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "gauge", "delta": 123.0}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "update JSON metric: incorrect counter val, #1",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "counter", "value": 123}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "update JSON metric: incorrect counter val, #2",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "counter", "delta": 123.0}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "update JSON metric: incorrect counter val, #3",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "counter", "delta": -123}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "update JSON metric: correct gauge",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "gauge", "value": 123.0}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"gauge","value":123}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+		},
+		{
+			name: "update JSON metric: correct counter",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "counter", "delta": 123}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"counter","delta":123}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+		},
+		{
+			name: "update JSON metric: correct counter with update",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        s(`{"id": "foo", "type": "counter", "delta": 123}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"counter","delta":246}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetCounterMetric("foo", 123)
 			},
 		},
 		/// Get metric test
@@ -186,7 +350,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotImplemented,
 				body:        http.StatusText(http.StatusNotImplemented),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -198,7 +362,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusNotFound,
 				body:        http.StatusText(http.StatusNotFound),
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 		},
 		{
@@ -210,7 +374,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        "123",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("metric1", 123)
@@ -225,7 +389,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        "1.230",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("metric1", 1.23)
@@ -240,10 +404,104 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        "1.235",
-				contentType: ContentTypeTextPlain,
+				contentType: _http.ContentTypeTextPlain,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("metric1", 1.23456)
+			},
+		},
+		/// Get JSON metric test
+		{
+			name: "get JSON metric: failed GET request",
+			req: testRequest{
+				method:      http.MethodGet,
+				url:         "/value/",
+				body:        s(`{"id": "foo", "type": "gauge"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusMethodNotAllowed,
+				body:        "",
+				contentType: "",
+			},
+		},
+		{
+			name: "get JSON metric: unknown metric type",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        s(`{"id": "foo", "type": "fuzz"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusNotImplemented,
+				body:        http.StatusText(http.StatusNotImplemented),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "get JSON metric: not in storage",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        s(`{"id": "foo", "type": "counter"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusNotFound,
+				body:        http.StatusText(http.StatusNotFound),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "get JSON metric: gauge",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        s(`{"id": "foo", "type": "gauge"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"gauge","value":123}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetGaugeMetric("foo", 123.0)
+			},
+		},
+		{
+			name: "get JSON metric: gauge rounded",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        s(`{"id": "foo", "type": "gauge"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"gauge","value":1.23456}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetGaugeMetric("foo", 1.23456)
+			},
+		},
+		{
+			name: "get JSON metric: counter",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        s(`{"id": "foo", "type": "counter"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"counter","delta":123}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetCounterMetric("foo", 123)
 			},
 		},
 		/// Get all metrics page
@@ -256,7 +514,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        data.AllMetricsEmptyResponse,
-				contentType: ContentTypeHTML,
+				contentType: _http.ContentTypeHTML,
 			},
 		},
 		{
@@ -268,7 +526,7 @@ func TestMetricsHandler(t *testing.T) {
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        data.AllMetricsResponseWithData,
-				contentType: ContentTypeHTML,
+				contentType: _http.ContentTypeHTML,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("foo", 1.23456)
@@ -292,7 +550,7 @@ func TestMetricsHandler(t *testing.T) {
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
-			statusCode, contentType, body := doTestRequest(t, ts, tt.req.method, tt.req.url)
+			statusCode, contentType, body := doTestRequest(t, ts, tt.req)
 
 			assert.Equal(t, tt.resp.code, statusCode)
 			assert.Equal(t, tt.resp.body, body)
@@ -301,9 +559,18 @@ func TestMetricsHandler(t *testing.T) {
 	}
 }
 
-func doTestRequest(t *testing.T, ts *httptest.Server, method, path string) (int, string, string) {
-	req, err := http.NewRequest(method, ts.URL+path, nil)
+func doTestRequest(t *testing.T, ts *httptest.Server, testReq testRequest) (int, string, string) {
+	var buf io.Reader
+	if testReq.body != nil {
+		buf = bytes.NewBuffer([]byte(*testReq.body))
+	}
+
+	req, err := http.NewRequest(testReq.method, ts.URL+testReq.url, buf)
 	require.NoError(t, err)
+
+	if testReq.contentType != nil {
+		req.Header.Set("Content-Type", *testReq.contentType)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)

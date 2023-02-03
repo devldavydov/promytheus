@@ -2,26 +2,38 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/devldavydov/promytheus/internal/common/logging"
 	"github.com/devldavydov/promytheus/internal/server"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	logger := logrus.New()
-	logger.SetLevel(logrus.DebugLevel) // TODO: read from env LOG_LEVEL
+	envConfig, err := LoadEnvConfig()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to load ENV settings: %v", err))
+	}
+
+	logger, err := logging.CreateLogger(envConfig.LogLevel)
+	if err != nil {
+		panic(err)
+	}
+
+	serverSettings, err := ServerSettingsAdapt(envConfig)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create server settings: %v", err))
+	}
+
+	serverService := server.NewService(serverSettings, 5*time.Second, logger)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	serverSettings := server.NewServiceSettings("127.0.0.1", 8080)
-	serverService := server.NewService(serverSettings, 5*time.Second, logger)
-
-	err := serverService.Start(ctx)
+	err = serverService.Start(ctx)
 	if err != nil {
 		logger.Error(err)
 		os.Exit(1)

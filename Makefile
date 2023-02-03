@@ -33,6 +33,10 @@ test_devops: build
 	@./devopstest -test.v -test.run=^TestIteration1$$ -agent-binary-path=cmd/agent/agent
 	@./devopstest -test.v -test.run=^TestIteration2[b]*$$ -source-path=. -binary-path=cmd/server/server
 	@./devopstest -test.v -test.run=^TestIteration3[b]*$$ -source-path=. -binary-path=cmd/server/server
+	@./devopstest -test.v -test.run=^TestIteration4$$ -source-path=. -binary-path=cmd/server/server -agent-binary-path=cmd/agent/agent
+	@export SERVER_PORT=11111 && \
+	 export ADDRESS="localhost:$${SERVER_PORT}" && \
+	 ./devopstest -test.v -test.run=^TestIteration5$$ -source-path=. -agent-binary-path=cmd/agent/agent -binary-path=cmd/server/server -server-port=$${SERVER_PORT}
 
 .PHONY: clean
 clean:

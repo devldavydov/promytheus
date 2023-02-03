@@ -23,3 +23,15 @@ func NewServiceSettings(serverAddress string, pollInterval time.Duration, report
 		reportInterval: reportInterval,
 	}, nil
 }
+
+func (s ServiceSettings) GetServerAddress() *url.URL {
+	return s.serverAddress
+}
+
+func (s ServiceSettings) GetPollInterval() time.Duration {
+	return s.pollInterval
+}
+
+func (s ServiceSettings) GetReportInterval() time.Duration {
+	return s.reportInterval
+}
