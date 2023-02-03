@@ -30,20 +30,25 @@ func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublis
 }
 
 func (httpPublisher *HTTPPublisher) Publish(metricsList []metric.Metrics) (metric.Metrics, error) {
-	var failedPublishMetrics = make(metric.Metrics)
+	var failedPublishCounterMetrics = make(metric.Metrics)
 	var err error
 
 	httpPublisher.logger.Debugf("Publishing metrics: %+v", metricsList)
 
 	iterateMetrics(metricsList, func(name string, value metric.MetricValue) {
 		err = httpPublisher.publishMetric(name, value)
-		if err != nil {
-			failedPublishMetrics[name] = value
+		if err != nil && metric.CounterTypeName == value.TypeName() {
+			curVal, ok := failedPublishCounterMetrics[name]
+			if !ok {
+				failedPublishCounterMetrics[name] = value
+			} else {
+				failedPublishCounterMetrics[name] = curVal.(metric.Counter) + value.(metric.Counter)
+			}
 		}
 	})
 
-	if len(failedPublishMetrics) != 0 {
-		return failedPublishMetrics, fmt.Errorf("failed to publish: %+v", failedPublishMetrics)
+	if len(failedPublishCounterMetrics) != 0 {
+		return failedPublishCounterMetrics, fmt.Errorf("failed to publish: %+v", failedPublishCounterMetrics)
 	} else {
 		return nil, nil
 	}
