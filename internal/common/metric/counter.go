@@ -14,10 +14,23 @@ func NewCounterFromString(val string) (Counter, error) {
 	if err != nil {
 		return 0, err
 	}
-	if intVal < 0 {
+	return NewCounterFromIntP(&intVal)
+}
+
+func NewCounterFromIntP(val *int64) (Counter, error) {
+	if val == nil {
+		return 0, errors.New("nil pointer")
+	}
+
+	if *val < 0 {
 		return 0, errors.New("value below zero")
 	}
-	return Counter(intVal), nil
+	return Counter(*val), nil
+}
+
+func (c Counter) IntP() *int64 {
+	v := int64(c)
+	return &v
 }
 
 func (c Counter) String() string {

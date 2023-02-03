@@ -25,6 +25,14 @@ func (storage *MemStorage) SetGaugeMetric(metricName string, value metric.Gauge)
 	return nil
 }
 
+func (storage *MemStorage) SetAndGetGaugeMetric(metricName string, value metric.Gauge) (metric.Gauge, error) {
+	storage.mu.Lock()
+	defer storage.mu.Unlock()
+
+	storage.gaugeStorage[metricName] = value
+	return value, nil
+}
+
 func (storage *MemStorage) GetGaugeMetric(metricName string) (metric.Gauge, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
@@ -42,6 +50,14 @@ func (storage *MemStorage) SetCounterMetric(metricName string, value metric.Coun
 
 	storage.counterStorage[metricName] += value
 	return nil
+}
+
+func (storage *MemStorage) SetAndGetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error) {
+	storage.mu.Lock()
+	defer storage.mu.Unlock()
+
+	storage.counterStorage[metricName] += value
+	return storage.counterStorage[metricName], nil
 }
 
 func (storage *MemStorage) GetCounterMetric(metricName string) (metric.Counter, error) {
