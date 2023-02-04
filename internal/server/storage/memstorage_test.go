@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -86,7 +85,7 @@ func TestGetAllMetrics(t *testing.T) {
 }
 
 func TestSyncPersistAndRestore(t *testing.T) {
-	tmpFile, err := ioutil.TempFile("/tmp", "test")
+	tmpFile, err := os.CreateTemp("/tmp", "test")
 	assert.NoError(t, err)
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
@@ -111,7 +110,7 @@ func TestSyncPersistAndRestore(t *testing.T) {
 }
 
 func TestSyncIntervalPersistAndRestore(t *testing.T) {
-	tmpFile, err := ioutil.TempFile("/tmp", "test")
+	tmpFile, err := os.CreateTemp("/tmp", "test")
 	assert.NoError(t, err)
 	tmpFile.Close()
 	defer os.Remove(tmpFile.Name())
