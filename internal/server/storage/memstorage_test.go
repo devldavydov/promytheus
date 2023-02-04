@@ -2,7 +2,10 @@ package storage
 
 import (
 	"context"
+	"io/ioutil"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/sirupsen/logrus"
@@ -80,6 +83,61 @@ func TestGetAllMetrics(t *testing.T) {
 		{"buzz", metric.Gauge(1.23456)},
 		{"fuzz", metric.Gauge(0)},
 	}, items)
+}
+
+func TestSyncPersistAndRestore(t *testing.T) {
+	tmpFile, err := ioutil.TempFile("/tmp", "test")
+	assert.NoError(t, err)
+	tmpFile.Close()
+	defer os.Remove(tmpFile.Name())
+
+	logger := logrus.New()
+	storage, err := NewMemStorage(context.TODO(), logger, NewPersistSettings(0, tmpFile.Name(), false))
+	assert.NoError(t, err)
+
+	storage.SetCounterMetric("foo", metric.Counter(5))
+	storage.SetGaugeMetric("bar", metric.Gauge(4.9))
+
+	storage2, err := NewMemStorage(context.TODO(), logger, NewPersistSettings(0, tmpFile.Name(), true))
+	assert.NoError(t, err)
+
+	cVal, err := storage2.GetCounterMetric("foo")
+	assert.NoError(t, err)
+	assert.Equal(t, metric.Counter(5), cVal)
+
+	gVal, err := storage2.GetGaugeMetric("bar")
+	assert.NoError(t, err)
+	assert.Equal(t, metric.Gauge(4.9), gVal)
+}
+
+func TestSyncIntervalPersistAndRestore(t *testing.T) {
+	tmpFile, err := ioutil.TempFile("/tmp", "test")
+	assert.NoError(t, err)
+	tmpFile.Close()
+	defer os.Remove(tmpFile.Name())
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	logger := logrus.New()
+	storage, err := NewMemStorage(ctx, logger, NewPersistSettings(2, tmpFile.Name(), false))
+	assert.NoError(t, err)
+
+	storage.SetCounterMetric("foo", metric.Counter(5))
+	storage.SetGaugeMetric("bar", metric.Gauge(4.9))
+
+	time.Sleep(5 * time.Second)
+	cancel()
+
+	storage2, err := NewMemStorage(context.TODO(), logger, NewPersistSettings(0, tmpFile.Name(), true))
+	assert.NoError(t, err)
+
+	cVal, err := storage2.GetCounterMetric("foo")
+	assert.NoError(t, err)
+	assert.Equal(t, metric.Counter(5), cVal)
+
+	gVal, err := storage2.GetGaugeMetric("bar")
+	assert.NoError(t, err)
+	assert.Equal(t, metric.Gauge(4.9), gVal)
 }
 
 func createMemStorageWithoutPersist() *MemStorage {
