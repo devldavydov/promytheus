@@ -25,8 +25,13 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 func (service *Service) Start(ctx context.Context) error {
 	service.logger.Info("Server service started")
 
+	memStorage, err := storage.NewMemStorage(ctx, service.logger, service.settings.persistSettings)
+	if err != nil {
+		return fmt.Errorf("failed to create storage: %w", err)
+	}
+
 	metricsHandler := handler.NewMetricsHandler(
-		storage.NewMemStorage(),
+		memStorage,
 		service.logger,
 	)
 	r := handler.NewRouter(metricsHandler, middleware.RealIP, middleware.Logger, middleware.Recoverer)

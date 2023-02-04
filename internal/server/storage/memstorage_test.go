@@ -1,14 +1,16 @@
 package storage
 
 import (
+	"context"
 	"testing"
 
 	"github.com/devldavydov/promytheus/internal/common/metric"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGaugeSetAndGet(t *testing.T) {
-	storage := NewMemStorage()
+	storage := createMemStorageWithoutPersist()
 	val := metric.Gauge(123.456)
 	storage.SetGaugeMetric("foo", val)
 
@@ -22,14 +24,14 @@ func TestGaugeSetAndGet(t *testing.T) {
 }
 
 func TestGaugeGetUnknown(t *testing.T) {
-	storage := NewMemStorage()
+	storage := createMemStorageWithoutPersist()
 
 	_, err := storage.GetGaugeMetric("foo")
 	assert.ErrorIs(t, err, ErrMetricNotFound)
 }
 
 func TestCounterSetNewAndGet(t *testing.T) {
-	storage := NewMemStorage()
+	storage := createMemStorageWithoutPersist()
 	val := metric.Counter(5)
 	storage.SetCounterMetric("foo", val)
 
@@ -43,7 +45,7 @@ func TestCounterSetNewAndGet(t *testing.T) {
 }
 
 func TestCounterSetExistingAndGet(t *testing.T) {
-	storage := NewMemStorage()
+	storage := createMemStorageWithoutPersist()
 	storage.SetCounterMetric("foo", metric.Counter(5))
 	storage.SetCounterMetric("foo", metric.Counter(5))
 
@@ -57,14 +59,14 @@ func TestCounterSetExistingAndGet(t *testing.T) {
 }
 
 func TestCounterGetUnknown(t *testing.T) {
-	storage := NewMemStorage()
+	storage := createMemStorageWithoutPersist()
 
 	_, err := storage.GetCounterMetric("foo")
 	assert.ErrorIs(t, err, ErrMetricNotFound)
 }
 
 func TestGetAllMetrics(t *testing.T) {
-	storage := NewMemStorage()
+	storage := createMemStorageWithoutPersist()
 	storage.SetCounterMetric("foo", metric.Counter(5))
 	storage.SetCounterMetric("bar", metric.Counter(10))
 	storage.SetGaugeMetric("fuzz", metric.Gauge(0))
@@ -78,4 +80,10 @@ func TestGetAllMetrics(t *testing.T) {
 		{"buzz", metric.Gauge(1.23456)},
 		{"fuzz", metric.Gauge(0)},
 	}, items)
+}
+
+func createMemStorageWithoutPersist() *MemStorage {
+	logger := logrus.New()
+	storage, _ := NewMemStorage(context.TODO(), logger, NewPersistSettings(0, "", false))
+	return storage
 }

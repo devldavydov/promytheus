@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -540,12 +541,14 @@ func TestMetricsHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			storage := storage.NewMemStorage()
+			logger := logrus.New()
+
+			storage, _ := storage.NewMemStorage(context.TODO(), logger, storage.NewPersistSettings(0, "", false))
 			if tt.stgInitFunc != nil {
 				tt.stgInitFunc(storage)
 			}
 
-			metricsHandler := NewMetricsHandler(storage, logrus.New())
+			metricsHandler := NewMetricsHandler(storage, logger)
 			r := NewRouter(metricsHandler)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
