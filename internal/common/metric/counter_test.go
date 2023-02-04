@@ -24,6 +24,16 @@ func TestNewCounterFromStringError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestNewCounterFromIntPError(t *testing.T) {
+	_, err := NewCounterFromIntP(nil)
+	assert.Error(t, err)
+}
+
+func TestCounterToIntP(t *testing.T) {
+	var exp int64 = 123
+	assert.Equal(t, exp, *Counter(123).IntP())
+}
+
 func TestCounterToString(t *testing.T) {
 	assert.Equal(t, "123", Counter(123).String())
 }

@@ -17,6 +17,16 @@ func TestNewGaugeFromString(t *testing.T) {
 	assert.Equal(t, expected, val)
 }
 
+func TestNewGaugeFromFloatPError(t *testing.T) {
+	_, err := NewGaugeFromFloatP(nil)
+	assert.Error(t, err)
+}
+
+func TestGaugeToFloatP(t *testing.T) {
+	exp := 123.0
+	assert.Equal(t, exp, *Gauge(123.0).FloatP())
+}
+
 func TestNewGaugeFromStringErr(t *testing.T) {
 	_, err := NewGaugeFromString("abc")
 	assert.Error(t, err)

@@ -1,6 +1,7 @@
 package metric
 
 import (
+	"errors"
 	"strconv"
 )
 
@@ -13,7 +14,20 @@ func NewGaugeFromString(val string) (Gauge, error) {
 	if err != nil {
 		return 0, err
 	}
-	return Gauge(flVal), nil
+	return NewGaugeFromFloatP(&flVal)
+}
+
+func NewGaugeFromFloatP(val *float64) (Gauge, error) {
+	if val == nil {
+		return 0, errors.New("nil pointer")
+	}
+
+	return Gauge(*val), nil
+}
+
+func (g Gauge) FloatP() *float64 {
+	v := float64(g)
+	return &v
 }
 
 func (g Gauge) String() string {
