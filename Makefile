@@ -30,9 +30,38 @@ test_static:
 .PHONY: test_devops
 test_devops: build
 	@echo "\n### $@"
+	@echo "DON'T FORGET TO START postgres.sh\n"
 	@./devopstest -test.v -test.run=^TestIteration1$$ -agent-binary-path=cmd/agent/agent
 	@./devopstest -test.v -test.run=^TestIteration2[b]*$$ -source-path=. -binary-path=cmd/server/server
 	@./devopstest -test.v -test.run=^TestIteration3[b]*$$ -source-path=. -binary-path=cmd/server/server
+	@./devopstest -test.v -test.run=^TestIteration4$$ -source-path=. -binary-path=cmd/server/server -agent-binary-path=cmd/agent/agent
+	@export SERVER_PORT=11111 && \
+	 export ADDRESS="localhost:$${SERVER_PORT}" && \
+	 ./devopstest -test.v -test.run=^TestIteration5$$ \
+	 -source-path=. \
+	 -agent-binary-path=cmd/agent/agent \
+	 -binary-path=cmd/server/server \
+	 -server-port=$${SERVER_PORT} 
+	@export SERVER_PORT=11111 && \
+	 export ADDRESS="localhost:$${SERVER_PORT}" && \
+	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+     ./devopstest -test.v -test.run=^TestIteration6$$ \
+	 -source-path=. \
+	 -agent-binary-path=cmd/agent/agent \
+	 -binary-path=cmd/server/server \
+	 -server-port=$${SERVER_PORT} \
+	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
+	 -file-storage-path=$${TEMP_FILE}
+	@export SERVER_PORT=11111 && \
+	 export ADDRESS="localhost:$${SERVER_PORT}" && \
+	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+	 ./devopstest -test.v -test.run=^TestIteration7$$ \
+	 -source-path=. \
+	 -agent-binary-path=cmd/agent/agent \
+	 -binary-path=cmd/server/server \
+	 -server-port=$${SERVER_PORT} \
+     -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
+	 -file-storage-path=$${TEMP_FILE}
 
 .PHONY: clean
 clean:
