@@ -17,7 +17,7 @@ type Collector interface {
 }
 
 type Publisher interface {
-	Publish([]metric.Metrics) (metric.Metrics, error)
+	Publish(context.Context, []metric.Metrics) (metric.Metrics, error)
 }
 
 type Service struct {
@@ -70,7 +70,7 @@ func (service *Service) startMainLoop(ctx context.Context) {
 				continue
 			}
 
-			failedPublishCounterMetrics, err := service.publisher.Publish([]metric.Metrics{metrics, service.failedPublishCounterMetrics})
+			failedPublishCounterMetrics, err := service.publisher.Publish(ctx, []metric.Metrics{metrics, service.failedPublishCounterMetrics})
 			if err != nil {
 				service.logger.Errorf("Publish metrics error: %v", err)
 				service.failedPublishCounterMetrics = failedPublishCounterMetrics

@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -29,20 +30,23 @@ func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublis
 	return &HTTPPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}
 }
 
-func (httpPublisher *HTTPPublisher) Publish(metricsList []metric.Metrics) (metric.Metrics, error) {
+func (httpPublisher *HTTPPublisher) Publish(ctx context.Context, metricsList []metric.Metrics) (metric.Metrics, error) {
 	var failedPublishCounterMetrics = make(metric.Metrics)
 	var err error
 
 	httpPublisher.logger.Debugf("Publishing metrics: %+v", metricsList)
 
-	iterateMetrics(metricsList, func(name string, value metric.MetricValue) {
+	iterateMetrics(ctx, metricsList, func(name string, value metric.MetricValue) {
 		err = httpPublisher.publishMetric(name, value)
-		if err != nil && metric.CounterTypeName == value.TypeName() {
-			curVal, ok := failedPublishCounterMetrics[name]
-			if !ok {
-				failedPublishCounterMetrics[name] = value
-			} else {
-				failedPublishCounterMetrics[name] = curVal.(metric.Counter) + value.(metric.Counter)
+		if err != nil {
+			httpPublisher.logger.Errorf("Failed to publish metric [%s] to [%s]: %v", name, httpPublisher.serverAddress, err)
+			if metric.CounterTypeName == value.TypeName() {
+				curVal, ok := failedPublishCounterMetrics[name]
+				if !ok {
+					failedPublishCounterMetrics[name] = value
+				} else {
+					failedPublishCounterMetrics[name] = curVal.(metric.Counter) + value.(metric.Counter)
+				}
 			}
 		}
 	})
@@ -87,9 +91,12 @@ func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue
 	return nil
 }
 
-func iterateMetrics(metricsList []metric.Metrics, fn func(name string, value metric.MetricValue)) {
+func iterateMetrics(ctx context.Context, metricsList []metric.Metrics, fn func(name string, value metric.MetricValue)) {
 	for _, metrics := range metricsList {
 		for name, value := range metrics {
+			if ctx.Err() != nil {
+				return
+			}
 			fn(name, value)
 		}
 	}
