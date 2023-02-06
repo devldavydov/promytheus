@@ -23,7 +23,7 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 }
 
 func (service *Service) Start(ctx context.Context) error {
-	service.logger.Info("Server service started")
+	service.logger.Infof("Server service started on [%s:%d]", service.settings.serverAddress, service.settings.serverPort)
 
 	memStorage, err := storage.NewMemStorage(ctx, service.logger, service.settings.persistSettings)
 	if err != nil {

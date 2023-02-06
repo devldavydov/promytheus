@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/caarlos0/env/v7"
 	"github.com/devldavydov/promytheus/internal/agent"
+	"github.com/devldavydov/promytheus/internal/common/env"
 	"github.com/devldavydov/promytheus/internal/common/settings"
 )
 
@@ -19,10 +19,10 @@ const (
 )
 
 type EnvConfig struct {
-	Address        string        `env:"ADDRESS"`
-	ReportInterval time.Duration `env:"REPORT_INTERVAL"`
-	PollInterval   time.Duration `env:"POLL_INTERVAL"`
-	LogLevel       string        `env:"LOG_LEVEL"`
+	Address        *env.EnvPair[string]
+	ReportInterval *env.EnvPair[time.Duration]
+	PollInterval   *env.EnvPair[time.Duration]
+	LogLevel       *env.EnvPair[string]
 }
 
 type FlagConfig struct {
@@ -31,57 +31,55 @@ type FlagConfig struct {
 	PollInterval   time.Duration
 }
 
-func LoadEnvConfig() (EnvConfig, error) {
-	envCfg := EnvConfig{
-		Address:        defaultConfigAddress,
-		ReportInterval: defaultConfigReportInterval,
-		PollInterval:   defaultConfigPollInterval,
-		LogLevel:       defaultConfigLogLevel,
+func LoadEnvConfig() (*EnvConfig, error) {
+	var err error
+	envCfg := &EnvConfig{}
+
+	envCfg.Address, err = env.GetVariable("ADDRESS", env.CastString, defaultConfigAddress)
+	if err != nil {
+		return nil, err
 	}
-	if err := env.Parse(&envCfg); err != nil {
-		return EnvConfig{}, err
+
+	envCfg.ReportInterval, err = env.GetVariable("REPORT_INTERVAL", env.CastDuration, defaultConfigReportInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	envCfg.PollInterval, err = env.GetVariable("POLL_INTERVAL", env.CastDuration, defaultConfigPollInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	envCfg.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, defaultConfigLogLevel)
+	if err != nil {
+		return nil, err
 	}
 
 	return envCfg, nil
 }
 
-func LoadFlagConfig(flagSet flag.FlagSet, flags []string) (FlagConfig, error) {
-	flagParseConfig := struct {
-		address        string
-		reportInterval string
-		pollInterval   string
-	}{}
-	flagSet.StringVar(&flagParseConfig.address, "a", defaultConfigAddress, "server address")
-	flagSet.StringVar(&flagParseConfig.reportInterval, "r", defaultConfigReportInterval.String(), "report interval")
-	flagSet.StringVar(&flagParseConfig.pollInterval, "p", defaultConfigPollInterval.String(), "poll interval")
+func LoadFlagConfig(flagSet flag.FlagSet, flags []string) (*FlagConfig, error) {
+	flagConfig := &FlagConfig{}
+	flagSet.StringVar(&flagConfig.Address, "a", defaultConfigAddress, "server address")
+	flagSet.DurationVar(&flagConfig.ReportInterval, "r", defaultConfigReportInterval, "report interval")
+	flagSet.DurationVar(&flagConfig.PollInterval, "p", defaultConfigPollInterval, "poll interval")
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flagSet.PrintDefaults()
 	}
-	flagSet.Parse(flags)
-
-	flagConfig := FlagConfig{Address: flagParseConfig.address}
-
-	durVal, err := time.ParseDuration(flagParseConfig.reportInterval)
+	err := flagSet.Parse(flags)
 	if err != nil {
-		return FlagConfig{}, err
+		return nil, err
 	}
-	flagConfig.ReportInterval = durVal
-
-	durVal, err = time.ParseDuration(flagParseConfig.pollInterval)
-	if err != nil {
-		return FlagConfig{}, err
-	}
-	flagConfig.PollInterval = durVal
 
 	return flagConfig, nil
 }
 
-func AgentSettingsAdapt(envConfig EnvConfig, flagConfig FlagConfig) (agent.ServiceSettings, error) {
+func AgentSettingsAdapt(envConfig *EnvConfig, flagConfig *FlagConfig) (agent.ServiceSettings, error) {
 	agentSettings, err := agent.NewServiceSettings(
-		"http://"+settings.GetPriorityParam(envConfig.Address, flagConfig.Address, defaultConfigAddress),
-		settings.GetPriorityParam(envConfig.PollInterval, flagConfig.PollInterval, defaultConfigPollInterval),
-		settings.GetPriorityParam(envConfig.ReportInterval, flagConfig.ReportInterval, defaultConfigReportInterval))
+		"http://"+settings.GetPriorityParam(envConfig.Address, flagConfig.Address),
+		settings.GetPriorityParam(envConfig.PollInterval, flagConfig.PollInterval),
+		settings.GetPriorityParam(envConfig.ReportInterval, flagConfig.ReportInterval))
 	if err != nil {
 		return agent.ServiceSettings{}, err
 	}

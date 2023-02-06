@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -18,12 +19,17 @@ func main() {
 		panic(fmt.Sprintf("Failed to load ENV settings: %v", err))
 	}
 
-	logger, err := logging.CreateLogger(envConfig.LogLevel)
+	flagConfig, err := LoadFlagConfig(*flag.CommandLine, os.Args[1:])
+	if err != nil {
+		panic(fmt.Sprintf("Failed to load flag settings: %v", err))
+	}
+
+	logger, err := logging.CreateLogger(envConfig.LogLevel.Value)
 	if err != nil {
 		panic(err)
 	}
 
-	serverSettings, err := ServerSettingsAdapt(envConfig)
+	serverSettings, err := ServerSettingsAdapt(envConfig, flagConfig)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create server settings: %v", err))
 	}

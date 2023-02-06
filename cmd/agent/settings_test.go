@@ -47,6 +47,23 @@ func TestAgentSettingsAdaptCustomEnv(t *testing.T) {
 	assert.Equal(t, expURL, agentSettings.GetServerAddress())
 }
 
+func TestAgentSettingsAdaptCustomFlag(t *testing.T) {
+	envCfg, err := LoadEnvConfig()
+	assert.NoError(t, err)
+
+	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
+	flagCfg, err := LoadFlagConfig(*testFlagSet, []string{"-a", "8.8.8.8:8888", "-r", "11s", "-p", "3s"})
+	assert.NoError(t, err)
+
+	agentSettings, err := AgentSettingsAdapt(envCfg, flagCfg)
+	assert.NoError(t, err)
+
+	expURL, _ := url.Parse("http://8.8.8.8:8888")
+	assert.Equal(t, 11*time.Second, agentSettings.GetReportInterval())
+	assert.Equal(t, 3*time.Second, agentSettings.GetPollInterval())
+	assert.Equal(t, expURL, agentSettings.GetServerAddress())
+}
+
 func TestAgentSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	t.Setenv("ADDRESS", "1.1.1.1:9999")
 	t.Setenv("REPORT_INTERVAL", "2s")
@@ -83,23 +100,6 @@ func TestAgentSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 
 	expURL, _ := url.Parse("http://1.1.1.1:9999")
 	assert.Equal(t, 10*time.Second, agentSettings.GetReportInterval())
-	assert.Equal(t, 3*time.Second, agentSettings.GetPollInterval())
-	assert.Equal(t, expURL, agentSettings.GetServerAddress())
-}
-
-func TestAgentSettingsAdaptCustomFlag(t *testing.T) {
-	envCfg, err := LoadEnvConfig()
-	assert.NoError(t, err)
-
-	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	flagCfg, err := LoadFlagConfig(*testFlagSet, []string{"-a", "8.8.8.8:8888", "-r", "11s", "-p", "3s"})
-	assert.NoError(t, err)
-
-	agentSettings, err := AgentSettingsAdapt(envCfg, flagCfg)
-	assert.NoError(t, err)
-
-	expURL, _ := url.Parse("http://8.8.8.8:8888")
-	assert.Equal(t, 11*time.Second, agentSettings.GetReportInterval())
 	assert.Equal(t, 3*time.Second, agentSettings.GetPollInterval())
 	assert.Equal(t, expURL, agentSettings.GetServerAddress())
 }

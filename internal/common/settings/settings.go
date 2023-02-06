@@ -1,12 +1,14 @@
 package settings
 
-func GetPriorityParam[T comparable](envValue, flagValue, defaultValue T) T {
-	if envValue == flagValue {
-		return envValue
+import "github.com/devldavydov/promytheus/internal/common/env"
+
+func GetPriorityParam[T comparable](envValue *env.EnvPair[T], flagValue T) T {
+	if envValue.Value == flagValue {
+		return envValue.Value
 	}
 
-	if envValue != defaultValue {
-		return envValue
+	if !envValue.IsDefault {
+		return envValue.Value
 	}
 
 	return flagValue

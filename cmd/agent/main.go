@@ -23,7 +23,7 @@ func main() {
 		panic(fmt.Sprintf("Failed to load flag settings: %v", err))
 	}
 
-	logger, err := logging.CreateLogger(envConfig.LogLevel)
+	logger, err := logging.CreateLogger(envConfig.LogLevel.Value)
 	if err != nil {
 		panic(err)
 	}

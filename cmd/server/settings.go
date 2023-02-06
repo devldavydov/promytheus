@@ -1,44 +1,94 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/caarlos0/env/v7"
+	"github.com/devldavydov/promytheus/internal/common/env"
+	"github.com/devldavydov/promytheus/internal/common/settings"
 	"github.com/devldavydov/promytheus/internal/server"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 )
 
+const (
+	defaultConfigAddress       = "127.0.0.1:8080"
+	defaultConfigLogLevel      = "DEBUG"
+	defaultconfigStoreInterval = 300 * time.Second
+	defaultConfigStoreFile     = "/tmp/devops-metrics-db.json"
+	defaultConfigRestore       = true
+)
+
 type EnvConfig struct {
-	Address       string        `env:"ADDRESS" envDefault:"127.0.0.1:8080"`
-	LogLevel      string        `env:"LOG_LEVEL" envDefault:"DEBUG"`
-	StoreInterval time.Duration `env:"STORE_INTERVAL" envDefault:"300s"`
-	StoreFile     string
-	Restore       bool `env:"RESTORE" envDefault:"true"`
+	Address       *env.EnvPair[string]
+	LogLevel      *env.EnvPair[string]
+	StoreInterval *env.EnvPair[time.Duration]
+	StoreFile     *env.EnvPair[string]
+	Restore       *env.EnvPair[bool]
 }
 
-func LoadEnvConfig() (EnvConfig, error) {
-	envCfg := EnvConfig{}
-	if err := env.Parse(&envCfg); err != nil {
-		return EnvConfig{}, err
+type FlagConfig struct {
+	Address       string
+	StoreInterval time.Duration
+	StoreFile     string
+	Restore       bool
+}
+
+func LoadEnvConfig() (*EnvConfig, error) {
+	var err error
+	envCfg := &EnvConfig{}
+
+	envCfg.Address, err = env.GetVariable("ADDRESS", env.CastString, defaultConfigAddress)
+	if err != nil {
+		return nil, err
 	}
 
-	// Get env var manualy, because caarlos0 set default value, when you set env var to empty value: STORE_FILE= cmd/server/server
-	val, exists := os.LookupEnv("STORE_FILE")
-	if !exists {
-		envCfg.StoreFile = "/tmp/devops-metrics-db.json"
-	} else {
-		envCfg.StoreFile = val
+	envCfg.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, defaultConfigLogLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	envCfg.StoreInterval, err = env.GetVariable("STORE_INTERVAL", env.CastDuration, defaultconfigStoreInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	envCfg.StoreFile, err = env.GetVariable("STORE_FILE", env.CastString, defaultConfigStoreFile)
+	if err != nil {
+		return nil, err
+	}
+
+	envCfg.Restore, err = env.GetVariable("RESTORE", env.CastBool, defaultConfigRestore)
+	if err != nil {
+		return nil, err
 	}
 
 	return envCfg, nil
 }
 
-func ServerSettingsAdapt(envConfig EnvConfig) (server.ServiceSettings, error) {
-	parts := strings.Split(envConfig.Address, ":")
+func LoadFlagConfig(flagSet flag.FlagSet, flags []string) (*FlagConfig, error) {
+	flagConfig := &FlagConfig{}
+	flagSet.StringVar(&flagConfig.Address, "a", defaultConfigAddress, "server address")
+	flagSet.DurationVar(&flagConfig.StoreInterval, "i", defaultconfigStoreInterval, "store interval")
+	flagSet.StringVar(&flagConfig.StoreFile, "f", defaultConfigStoreFile, "store file")
+	flagSet.BoolVar(&flagConfig.Restore, "r", defaultConfigRestore, "restore")
+	flagSet.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		flagSet.PrintDefaults()
+	}
+	err := flagSet.Parse(flags)
+	if err != nil {
+		return nil, err
+	}
+
+	return flagConfig, nil
+}
+
+func ServerSettingsAdapt(envConfig *EnvConfig, flagConfig *FlagConfig) (server.ServiceSettings, error) {
+	parts := strings.Split(settings.GetPriorityParam(envConfig.Address, flagConfig.Address), ":")
 	if len(parts) != 2 {
 		return server.ServiceSettings{}, fmt.Errorf("wrong address format")
 	}
@@ -49,6 +99,9 @@ func ServerSettingsAdapt(envConfig EnvConfig) (server.ServiceSettings, error) {
 		return server.ServiceSettings{}, fmt.Errorf("wrong address format")
 	}
 
-	persistSettings := storage.NewPersistSettings(envConfig.StoreInterval, envConfig.StoreFile, envConfig.Restore)
+	persistSettings := storage.NewPersistSettings(
+		settings.GetPriorityParam(envConfig.StoreInterval, flagConfig.StoreInterval),
+		settings.GetPriorityParam(envConfig.StoreFile, flagConfig.StoreFile),
+		settings.GetPriorityParam(envConfig.Restore, flagConfig.Restore))
 	return server.NewServiceSettings(address, port, persistSettings), nil
 }
