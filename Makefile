@@ -62,6 +62,16 @@ test_devops: build
 	 -server-port=$${SERVER_PORT} \
      -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
 	 -file-storage-path=$${TEMP_FILE}
+	@export SERVER_PORT=11111 && \
+	 export ADDRESS="localhost:$${SERVER_PORT}" && \
+	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+	 ./devopstest -test.v -test.run=^TestIteration8 \
+	 -source-path=. \
+	 -agent-binary-path=cmd/agent/agent \
+	 -binary-path=cmd/server/server \
+	 -server-port=$${SERVER_PORT} \
+	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
+	 -file-storage-path=$${TEMP_FILE}
 
 .PHONY: clean
 clean:

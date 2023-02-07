@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/devldavydov/promytheus/internal/server/handler"
+	_middleware "github.com/devldavydov/promytheus/internal/server/middleware"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
@@ -34,7 +35,7 @@ func (service *Service) Start(ctx context.Context) error {
 		memStorage,
 		service.logger,
 	)
-	r := handler.NewRouter(metricsHandler, middleware.RealIP, middleware.Logger, middleware.Recoverer)
+	r := handler.NewRouter(metricsHandler, middleware.RealIP, middleware.Logger, middleware.Recoverer, _middleware.Gzip)
 
 	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: r}
 

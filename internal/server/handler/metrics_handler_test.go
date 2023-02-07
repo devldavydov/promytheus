@@ -2,31 +2,37 @@ package handler
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	_http "github.com/devldavydov/promytheus/internal/common/http"
+	"github.com/devldavydov/promytheus/internal/server/middleware"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/devldavydov/promytheus/tests/data"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 )
 
 type testResponse struct {
 	code        int
 	body        string
 	contentType string
+	headers     map[string][]string
 }
 
 type testRequest struct {
 	method      string
 	url         string
-	body        *string
+	body        io.Reader
 	contentType *string
+	headers     map[string][]string
 }
 
 func TestMetricsHandler(t *testing.T) {
@@ -34,6 +40,7 @@ func TestMetricsHandler(t *testing.T) {
 
 	tests := []struct {
 		name        string
+		xfail       bool
 		req         testRequest
 		resp        testResponse
 		stgInitFunc func(storage.Storage)
@@ -177,7 +184,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodGet,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "gauge", "value": 123.0}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge", "value": 123.0}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -191,7 +198,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "fuzz", "value": 123.0}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "fuzz", "value": 123.0}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -205,7 +212,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "", "type": "gauge", "value": 123.0}`),
+				body:        bodyStringReader(`{"id": "", "type": "gauge", "value": 123.0}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -219,7 +226,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "gauge", "value": "abc"}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge", "value": "abc"}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -233,7 +240,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "gauge", "delta": 123.0}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge", "delta": 123.0}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -247,7 +254,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "counter", "value": 123}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "counter", "value": 123}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -261,7 +268,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "counter", "delta": 123.0}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "counter", "delta": 123.0}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -275,7 +282,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "counter", "delta": -123}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "counter", "delta": -123}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -289,7 +296,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "gauge", "value": 123.0}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge", "value": 123.0}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -303,7 +310,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "counter", "delta": 123}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "counter", "delta": 123}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -317,13 +324,32 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/update/",
-				body:        s(`{"id": "foo", "type": "counter", "delta": 123}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "counter", "delta": 123}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
 				body:        `{"id":"foo","type":"counter","delta":246}` + "\n",
 				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetCounterMetric("foo", 123)
+			},
+		},
+		{
+			name: "update JSON metric: correct counter with update, gzipped",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyGzipReader(`{"id": "foo", "type": "counter", "delta": 123}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+				headers:     map[string][]string{"Accept-Encoding": {"gzip"}, "Content-Encoding": {"gzip"}},
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"counter","delta":246}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+				headers:     map[string][]string{"Content-Encoding": {"gzip"}},
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("foo", 123)
@@ -417,7 +443,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodGet,
 				url:         "/value/",
-				body:        s(`{"id": "foo", "type": "gauge"}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge"}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -431,7 +457,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/value/",
-				body:        s(`{"id": "foo", "type": "fuzz"}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "fuzz"}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -445,7 +471,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/value/",
-				body:        s(`{"id": "foo", "type": "counter"}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "counter"}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -459,7 +485,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/value/",
-				body:        s(`{"id": "foo", "type": "gauge"}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge"}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -476,7 +502,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/value/",
-				body:        s(`{"id": "foo", "type": "gauge"}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge"}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -493,7 +519,7 @@ func TestMetricsHandler(t *testing.T) {
 			req: testRequest{
 				method:      http.MethodPost,
 				url:         "/value/",
-				body:        s(`{"id": "foo", "type": "counter"}`),
+				body:        bodyStringReader(`{"id": "foo", "type": "counter"}`),
 				contentType: s(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
@@ -519,6 +545,20 @@ func TestMetricsHandler(t *testing.T) {
 			},
 		},
 		{
+			name: "get all metrics page: empty, gzipped",
+			req: testRequest{
+				method:  http.MethodGet,
+				url:     "/",
+				headers: map[string][]string{"Accept-Encoding": {"gzip"}},
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        data.AllMetricsEmptyResponse,
+				contentType: _http.ContentTypeHTML,
+				headers:     map[string][]string{"Content-Encoding": {"gzip"}},
+			},
+		},
+		{
 			name: "get all metrics page: with data",
 			req: testRequest{
 				method: http.MethodGet,
@@ -540,6 +580,9 @@ func TestMetricsHandler(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		if tt.xfail {
+			continue
+		}
 		t.Run(tt.name, func(t *testing.T) {
 			logger := logrus.New()
 
@@ -549,38 +592,71 @@ func TestMetricsHandler(t *testing.T) {
 			}
 
 			metricsHandler := NewMetricsHandler(storage, logger)
-			r := NewRouter(metricsHandler)
+			r := NewRouter(metricsHandler, middleware.Gzip)
 			ts := httptest.NewServer(r)
 			defer ts.Close()
 
-			statusCode, contentType, body := doTestRequest(t, ts, tt.req)
+			statusCode, contentType, body, headers := doTestRequest(t, ts, tt.req)
 
 			assert.Equal(t, tt.resp.code, statusCode)
 			assert.Equal(t, tt.resp.body, body)
 			assert.Equal(t, tt.resp.contentType, contentType)
+
+			for expName, expHeaders := range tt.resp.headers {
+				for _, expHeader := range expHeaders {
+					assert.True(t, slices.Contains(headers[expName], expHeader))
+				}
+			}
 		})
 	}
 }
 
-func doTestRequest(t *testing.T, ts *httptest.Server, testReq testRequest) (int, string, string) {
-	var buf io.Reader
-	if testReq.body != nil {
-		buf = bytes.NewBuffer([]byte(*testReq.body))
-	}
-
-	req, err := http.NewRequest(testReq.method, ts.URL+testReq.url, buf)
+func doTestRequest(t *testing.T, ts *httptest.Server, testReq testRequest) (int, string, string, map[string][]string) {
+	req, err := http.NewRequest(testReq.method, ts.URL+testReq.url, testReq.body)
 	require.NoError(t, err)
 
 	if testReq.contentType != nil {
 		req.Header.Set("Content-Type", *testReq.contentType)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	for name, headers := range testReq.headers {
+		for _, header := range headers {
+			req.Header.Set(name, header)
+		}
+	}
+
+	client := &http.Client{
+		Transport: &http.Transport{DisableCompression: true},
+	}
+	resp, err := client.Do(req)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
-	respBody, err := io.ReadAll(resp.Body)
+
+	var respBody []byte
+	var bodyReader io.Reader
+
+	if !strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
+		bodyReader = resp.Body
+	} else {
+		gzReader, err := gzip.NewReader(resp.Body)
+		require.NoError(t, err)
+		bodyReader = gzReader
+	}
+	respBody, err = io.ReadAll(bodyReader)
 	require.NoError(t, err)
 
-	return resp.StatusCode, resp.Header.Get("Content-Type"), string(respBody)
+	return resp.StatusCode, resp.Header.Get("Content-Type"), string(respBody), resp.Header
+}
+
+func bodyStringReader(val string) io.Reader {
+	return bytes.NewBuffer([]byte(val))
+}
+
+func bodyGzipReader(val string) io.Reader {
+	var buf bytes.Buffer
+	zw, _ := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
+	zw.Write([]byte(val))
+	zw.Close()
+	return &buf
 }
