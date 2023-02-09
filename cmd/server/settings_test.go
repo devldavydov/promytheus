@@ -9,14 +9,11 @@ import (
 )
 
 func TestServerSettingsAdaptDefault(t *testing.T) {
-	envConfig, err := LoadEnvConfig()
-	assert.NoError(t, err)
-
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	flagCfg, err := LoadFlagConfig(*testFlagSet, []string{})
+	config, err := LoadConfig(*testFlagSet, []string{})
 	assert.NoError(t, err)
 
-	serverSettings, err := ServerSettingsAdapt(envConfig, flagCfg)
+	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "127.0.0.1", serverSettings.GetServerAddress())
@@ -34,14 +31,11 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 		t.Setenv("STORE_FILE", storeFile)
 		t.Setenv("RESTORE", "false")
 
-		envConfig, err := LoadEnvConfig()
-		assert.NoError(t, err)
-
 		testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-		flagCfg, err := LoadFlagConfig(*testFlagSet, []string{})
+		config, err := LoadConfig(*testFlagSet, []string{})
 		assert.NoError(t, err)
 
-		serverSettings, err := ServerSettingsAdapt(envConfig, flagCfg)
+		serverSettings, err := ServerSettingsAdapt(config)
 		assert.NoError(t, err)
 
 		assert.Equal(t, "1.1.1.1", serverSettings.GetServerAddress())
@@ -53,14 +47,11 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 }
 
 func TestServerSettingsAdaptCustomFlag(t *testing.T) {
-	envConfig, err := LoadEnvConfig()
-	assert.NoError(t, err)
-
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	flagCfg, err := LoadFlagConfig(*testFlagSet, []string{"-a", "1.1.1.1:9999", "-i", "0s", "-f", "/tmp/ttt", "-r=false"})
+	config, err := LoadConfig(*testFlagSet, []string{"-a", "1.1.1.1:9999", "-i", "0s", "-f", "/tmp/ttt", "-r=false"})
 	assert.NoError(t, err)
 
-	serverSettings, err := ServerSettingsAdapt(envConfig, flagCfg)
+	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "1.1.1.1", serverSettings.GetServerAddress())
@@ -76,14 +67,11 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	t.Setenv("STORE_FILE", "/tmp/ttt")
 	t.Setenv("RESTORE", "false")
 
-	envConfig, err := LoadEnvConfig()
-	assert.NoError(t, err)
-
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	flagCfg, err := LoadFlagConfig(*testFlagSet, []string{"-a", "7.7.7.7:7777", "-i", "10s", "-f", "/tmp/aaa", "-r=true"})
+	config, err := LoadConfig(*testFlagSet, []string{"-a", "7.7.7.7:7777", "-i", "10s", "-f", "/tmp/aaa", "-r=true"})
 	assert.NoError(t, err)
 
-	serverSettings, err := ServerSettingsAdapt(envConfig, flagCfg)
+	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "1.1.1.1", serverSettings.GetServerAddress())
@@ -97,14 +85,11 @@ func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	t.Setenv("STORE_INTERVAL", "1s")
 	t.Setenv("RESTORE", "true")
 
-	envConfig, err := LoadEnvConfig()
-	assert.NoError(t, err)
-
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	flagCfg, err := LoadFlagConfig(*testFlagSet, []string{"-i", "5m", "-r=false"})
+	config, err := LoadConfig(*testFlagSet, []string{"-i", "5m", "-r=false"})
 	assert.NoError(t, err)
 
-	serverSettings, err := ServerSettingsAdapt(envConfig, flagCfg)
+	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "127.0.0.1", serverSettings.GetServerAddress())
@@ -120,14 +105,11 @@ func TestServerSettingsAdaptCustomError(t *testing.T) {
 	for _, addr := range testAddress {
 		t.Setenv("ADDRESS", addr)
 
-		envConfig, err := LoadEnvConfig()
-		assert.NoError(t, err)
-
 		testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-		flagCfg, err := LoadFlagConfig(*testFlagSet, []string{})
+		config, err := LoadConfig(*testFlagSet, []string{})
 		assert.NoError(t, err)
 
-		_, err = ServerSettingsAdapt(envConfig, flagCfg)
+		_, err = ServerSettingsAdapt(config)
 		assert.Error(t, err)
 	}
 }

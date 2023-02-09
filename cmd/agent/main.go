@@ -13,22 +13,17 @@ import (
 )
 
 func main() {
-	envConfig, err := LoadEnvConfig()
+	config, err := LoadConfig(*flag.CommandLine, os.Args[1:])
 	if err != nil {
-		panic(fmt.Sprintf("Failed to load ENV settings: %v", err))
+		panic(fmt.Sprintf("Failed to load flag and ENV settings: %v", err))
 	}
 
-	flagConfig, err := LoadFlagConfig(*flag.CommandLine, os.Args[1:])
-	if err != nil {
-		panic(fmt.Sprintf("Failed to load flag settings: %v", err))
-	}
-
-	logger, err := logging.CreateLogger(envConfig.LogLevel.Value)
+	logger, err := logging.CreateLogger(config.LogLevel)
 	if err != nil {
 		panic(err)
 	}
 
-	agentSettings, err := AgentSettingsAdapt(envConfig, flagConfig)
+	agentSettings, err := AgentSettingsAdapt(config)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create agent settings: %v", err))
 	}

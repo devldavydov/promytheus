@@ -14,22 +14,17 @@ import (
 )
 
 func main() {
-	envConfig, err := LoadEnvConfig()
+	config, err := LoadConfig(*flag.CommandLine, os.Args[1:])
 	if err != nil {
-		panic(fmt.Sprintf("Failed to load ENV settings: %v", err))
+		panic(fmt.Sprintf("Failed to load flag and ENV settings: %v", err))
 	}
 
-	flagConfig, err := LoadFlagConfig(*flag.CommandLine, os.Args[1:])
-	if err != nil {
-		panic(fmt.Sprintf("Failed to load flag settings: %v", err))
-	}
-
-	logger, err := logging.CreateLogger(envConfig.LogLevel.Value)
+	logger, err := logging.CreateLogger(config.LogLevel)
 	if err != nil {
 		panic(err)
 	}
 
-	serverSettings, err := ServerSettingsAdapt(envConfig, flagConfig)
+	serverSettings, err := ServerSettingsAdapt(config)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create server settings: %v", err))
 	}

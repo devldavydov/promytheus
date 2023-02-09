@@ -8,7 +8,6 @@ import (
 
 	"github.com/devldavydov/promytheus/internal/agent"
 	"github.com/devldavydov/promytheus/internal/common/env"
-	"github.com/devldavydov/promytheus/internal/common/settings"
 )
 
 const (
@@ -18,68 +17,57 @@ const (
 	defaultConfigLogLevel       = "DEBUG"
 )
 
-type EnvConfig struct {
-	Address        *env.EnvPair[string]
-	ReportInterval *env.EnvPair[time.Duration]
-	PollInterval   *env.EnvPair[time.Duration]
-	LogLevel       *env.EnvPair[string]
-}
-
-type FlagConfig struct {
+type Config struct {
 	Address        string
 	ReportInterval time.Duration
 	PollInterval   time.Duration
+	LogLevel       string
 }
 
-func LoadEnvConfig() (*EnvConfig, error) {
+func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	var err error
-	envCfg := &EnvConfig{}
+	config := &Config{}
 
-	envCfg.Address, err = env.GetVariable("ADDRESS", env.CastString, defaultConfigAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	envCfg.ReportInterval, err = env.GetVariable("REPORT_INTERVAL", env.CastDuration, defaultConfigReportInterval)
-	if err != nil {
-		return nil, err
-	}
-
-	envCfg.PollInterval, err = env.GetVariable("POLL_INTERVAL", env.CastDuration, defaultConfigPollInterval)
-	if err != nil {
-		return nil, err
-	}
-
-	envCfg.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, defaultConfigLogLevel)
-	if err != nil {
-		return nil, err
-	}
-
-	return envCfg, nil
-}
-
-func LoadFlagConfig(flagSet flag.FlagSet, flags []string) (*FlagConfig, error) {
-	flagConfig := &FlagConfig{}
-	flagSet.StringVar(&flagConfig.Address, "a", defaultConfigAddress, "server address")
-	flagSet.DurationVar(&flagConfig.ReportInterval, "r", defaultConfigReportInterval, "report interval")
-	flagSet.DurationVar(&flagConfig.PollInterval, "p", defaultConfigPollInterval, "poll interval")
+	flagSet.StringVar(&config.Address, "a", defaultConfigAddress, "server address")
+	flagSet.DurationVar(&config.ReportInterval, "r", defaultConfigReportInterval, "report interval")
+	flagSet.DurationVar(&config.PollInterval, "p", defaultConfigPollInterval, "poll interval")
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flagSet.PrintDefaults()
 	}
-	err := flagSet.Parse(flags)
+	err = flagSet.Parse(flags)
 	if err != nil {
 		return nil, err
 	}
 
-	return flagConfig, nil
+	config.Address, err = env.GetVariable("ADDRESS", env.CastString, config.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	config.ReportInterval, err = env.GetVariable("REPORT_INTERVAL", env.CastDuration, config.ReportInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	config.PollInterval, err = env.GetVariable("POLL_INTERVAL", env.CastDuration, config.PollInterval)
+	if err != nil {
+		return nil, err
+	}
+
+	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, defaultConfigLogLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
 
-func AgentSettingsAdapt(envConfig *EnvConfig, flagConfig *FlagConfig) (agent.ServiceSettings, error) {
+func AgentSettingsAdapt(config *Config) (agent.ServiceSettings, error) {
 	agentSettings, err := agent.NewServiceSettings(
-		"http://"+settings.GetPriorityParam(envConfig.Address, flagConfig.Address),
-		settings.GetPriorityParam(envConfig.PollInterval, flagConfig.PollInterval),
-		settings.GetPriorityParam(envConfig.ReportInterval, flagConfig.ReportInterval))
+		"http://"+config.Address,
+		config.PollInterval,
+		config.ReportInterval)
 	if err != nil {
 		return agent.ServiceSettings{}, err
 	}

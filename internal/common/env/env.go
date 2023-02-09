@@ -11,16 +11,16 @@ type EnvPair[T any] struct {
 	IsDefault bool
 }
 
-func GetVariable[T any](variableName string, fnCast func(string) (T, error), defaultValue T) (*EnvPair[T], error) {
+func GetVariable[T any](variableName string, fnCast func(string) (T, error), defaultValue T) (T, error) {
 	val, exists := os.LookupEnv(variableName)
 	if !exists {
-		return &EnvPair[T]{defaultValue, true}, nil
+		return defaultValue, nil
 	}
 	castVal, err := fnCast(val)
 	if err != nil {
-		return nil, err
+		return defaultValue, err
 	}
-	return &EnvPair[T]{castVal, false}, nil
+	return castVal, nil
 }
 
 func CastString(val string) (string, error) {
