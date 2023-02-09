@@ -38,10 +38,10 @@ func (gw *gzipWriter) Write(b []byte) (int, error) {
 		gw.Header().Set("Content-Encoding", "gzip")
 		gw.ResponseWriter.WriteHeader(gw.statusCode)
 		return gw.gzWriter.Write(b)
-	} else {
-		gw.ResponseWriter.WriteHeader(gw.statusCode)
-		return gw.ResponseWriter.Write(b)
 	}
+
+	gw.ResponseWriter.WriteHeader(gw.statusCode)
+	return gw.ResponseWriter.Write(b)
 }
 
 func (gw *gzipWriter) WriteHeader(statusCode int) {

@@ -142,6 +142,7 @@ func (storage *MemStorage) restore() error {
 			return fmt.Errorf("restore open file [%s] err: %w", storage.persistSettings.storeFile, err)
 		}
 	}
+	defer file.Close()
 
 	var totalMetrics []metric.MetricsDTO
 	err = json.NewDecoder(file).Decode(&totalMetrics)
@@ -193,6 +194,7 @@ func (storage *MemStorage) persist() {
 		storage.logger.Errorf("Failed to open persist storage file [%s]: %v", storage.persistSettings.storeFile, err)
 		return
 	}
+	defer file.Close()
 
 	err = json.NewEncoder(file).Encode(totalMetrics)
 	if err != nil {
