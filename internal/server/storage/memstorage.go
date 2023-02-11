@@ -133,13 +133,13 @@ func (storage *MemStorage) restore() error {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
-	file, err := os.OpenFile(storage.persistSettings.storeFile, os.O_RDONLY, 0644)
+	file, err := os.OpenFile(storage.persistSettings.StoreFile, os.O_RDONLY, 0644)
 	if err != nil {
 		if os.IsNotExist(err) {
-			storage.logger.Warnf("Restore file [%s] not exists, skipping...", storage.persistSettings.storeFile)
+			storage.logger.Warnf("Restore file [%s] not exists, skipping...", storage.persistSettings.StoreFile)
 			return nil
 		} else {
-			return fmt.Errorf("restore open file [%s] err: %w", storage.persistSettings.storeFile, err)
+			return fmt.Errorf("restore open file [%s] err: %w", storage.persistSettings.StoreFile, err)
 		}
 	}
 	defer file.Close()
@@ -169,7 +169,7 @@ func (storage *MemStorage) restore() error {
 			storage.gaugeStorage[v.ID] = val
 		}
 	}
-	storage.logger.Infof("Storage restored from file [%s]", storage.persistSettings.storeFile)
+	storage.logger.Infof("Storage restored from file [%s]", storage.persistSettings.StoreFile)
 
 	return nil
 }
@@ -189,9 +189,9 @@ func (storage *MemStorage) persist() {
 		totalMetrics = append(totalMetrics, metric.MetricsDTO{ID: k, MType: metric.GaugeTypeName, Value: v.FloatP()})
 	}
 
-	file, err := os.OpenFile(storage.persistSettings.storeFile, os.O_WRONLY|os.O_CREATE, 0644)
+	file, err := os.OpenFile(storage.persistSettings.StoreFile, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		storage.logger.Errorf("Failed to open persist storage file [%s]: %v", storage.persistSettings.storeFile, err)
+		storage.logger.Errorf("Failed to open persist storage file [%s]: %v", storage.persistSettings.StoreFile, err)
 		return
 	}
 	defer file.Close()
@@ -203,7 +203,7 @@ func (storage *MemStorage) persist() {
 }
 
 func (storage *MemStorage) persistIntervalThread(ctx context.Context) {
-	ticker := time.NewTicker(storage.persistSettings.storeInterval)
+	ticker := time.NewTicker(storage.persistSettings.StoreInterval)
 	defer ticker.Stop()
 
 	for {

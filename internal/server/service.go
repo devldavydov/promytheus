@@ -24,9 +24,9 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 }
 
 func (service *Service) Start(ctx context.Context) error {
-	service.logger.Infof("Server service started on [%s:%d]", service.settings.serverAddress, service.settings.serverPort)
+	service.logger.Infof("Server service started on [%s:%d]", service.settings.ServerAddress, service.settings.ServerPort)
 
-	memStorage, err := storage.NewMemStorage(ctx, service.logger, service.settings.persistSettings)
+	memStorage, err := storage.NewMemStorage(ctx, service.logger, service.settings.PersistSettings)
 	if err != nil {
 		return fmt.Errorf("failed to create storage: %w", err)
 	}
@@ -64,5 +64,5 @@ func (service *Service) Start(ctx context.Context) error {
 }
 
 func (service *Service) getServerFullAddr() string {
-	return fmt.Sprintf("%s:%d", service.settings.serverAddress, service.settings.serverPort)
+	return fmt.Sprintf("%s:%d", service.settings.ServerAddress, service.settings.ServerPort)
 }

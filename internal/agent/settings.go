@@ -6,9 +6,9 @@ import (
 )
 
 type ServiceSettings struct {
-	serverAddress  *url.URL
-	pollInterval   time.Duration
-	reportInterval time.Duration
+	ServerAddress  *url.URL
+	PollInterval   time.Duration
+	ReportInterval time.Duration
 }
 
 func NewServiceSettings(serverAddress string, pollInterval time.Duration, reportInterval time.Duration) (ServiceSettings, error) {
@@ -18,20 +18,8 @@ func NewServiceSettings(serverAddress string, pollInterval time.Duration, report
 	}
 
 	return ServiceSettings{
-		serverAddress:  url,
-		pollInterval:   pollInterval,
-		reportInterval: reportInterval,
+		ServerAddress:  url,
+		PollInterval:   pollInterval,
+		ReportInterval: reportInterval,
 	}, nil
-}
-
-func (s ServiceSettings) GetServerAddress() *url.URL {
-	return s.serverAddress
-}
-
-func (s ServiceSettings) GetPollInterval() time.Duration {
-	return s.pollInterval
-}
-
-func (s ServiceSettings) GetReportInterval() time.Duration {
-	return s.reportInterval
 }

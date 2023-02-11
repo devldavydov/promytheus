@@ -18,9 +18,9 @@ func TestAgentSettingsAdaptDefault(t *testing.T) {
 	assert.NoError(t, err)
 
 	expURL, _ := url.Parse("http://127.0.0.1:8080")
-	assert.Equal(t, 10*time.Second, agentSettings.GetReportInterval())
-	assert.Equal(t, 2*time.Second, agentSettings.GetPollInterval())
-	assert.Equal(t, expURL, agentSettings.GetServerAddress())
+	assert.Equal(t, 10*time.Second, agentSettings.ReportInterval)
+	assert.Equal(t, 2*time.Second, agentSettings.PollInterval)
+	assert.Equal(t, expURL, agentSettings.ServerAddress)
 }
 
 func TestAgentSettingsAdaptCustomEnv(t *testing.T) {
@@ -36,9 +36,9 @@ func TestAgentSettingsAdaptCustomEnv(t *testing.T) {
 	assert.NoError(t, err)
 
 	expURL, _ := url.Parse("http://1.1.1.1:9999")
-	assert.Equal(t, 1*time.Second, agentSettings.GetReportInterval())
-	assert.Equal(t, 2*time.Second, agentSettings.GetPollInterval())
-	assert.Equal(t, expURL, agentSettings.GetServerAddress())
+	assert.Equal(t, 1*time.Second, agentSettings.ReportInterval)
+	assert.Equal(t, 2*time.Second, agentSettings.PollInterval)
+	assert.Equal(t, expURL, agentSettings.ServerAddress)
 }
 
 func TestAgentSettingsAdaptCustomFlag(t *testing.T) {
@@ -50,9 +50,9 @@ func TestAgentSettingsAdaptCustomFlag(t *testing.T) {
 	assert.NoError(t, err)
 
 	expURL, _ := url.Parse("http://8.8.8.8:8888")
-	assert.Equal(t, 11*time.Second, agentSettings.GetReportInterval())
-	assert.Equal(t, 3*time.Second, agentSettings.GetPollInterval())
-	assert.Equal(t, expURL, agentSettings.GetServerAddress())
+	assert.Equal(t, 11*time.Second, agentSettings.ReportInterval)
+	assert.Equal(t, 3*time.Second, agentSettings.PollInterval)
+	assert.Equal(t, expURL, agentSettings.ServerAddress)
 }
 
 func TestAgentSettingsAdaptCustomEnvAndFlag(t *testing.T) {
@@ -68,9 +68,9 @@ func TestAgentSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	assert.NoError(t, err)
 
 	expURL, _ := url.Parse("http://1.1.1.1:9999")
-	assert.Equal(t, 2*time.Second, agentSettings.GetReportInterval())
-	assert.Equal(t, 4*time.Second, agentSettings.GetPollInterval())
-	assert.Equal(t, expURL, agentSettings.GetServerAddress())
+	assert.Equal(t, 2*time.Second, agentSettings.ReportInterval)
+	assert.Equal(t, 4*time.Second, agentSettings.PollInterval)
+	assert.Equal(t, expURL, agentSettings.ServerAddress)
 }
 
 func TestAgentSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
@@ -84,9 +84,9 @@ func TestAgentSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	assert.NoError(t, err)
 
 	expURL, _ := url.Parse("http://1.1.1.1:9999")
-	assert.Equal(t, 10*time.Second, agentSettings.GetReportInterval())
-	assert.Equal(t, 3*time.Second, agentSettings.GetPollInterval())
-	assert.Equal(t, expURL, agentSettings.GetServerAddress())
+	assert.Equal(t, 10*time.Second, agentSettings.ReportInterval)
+	assert.Equal(t, 3*time.Second, agentSettings.PollInterval)
+	assert.Equal(t, expURL, agentSettings.ServerAddress)
 }
 
 func TestAgentSettingsAdaptCustomError(t *testing.T) {

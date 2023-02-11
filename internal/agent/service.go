@@ -32,8 +32,8 @@ func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 	return &Service{
 		settings:  settings,
 		logger:    logger,
-		collector: collector.NewRuntimeCollector(settings.pollInterval, logger),
-		publisher: publisher.NewHTTPPublisher(settings.serverAddress, logger),
+		collector: collector.NewRuntimeCollector(settings.PollInterval, logger),
+		publisher: publisher.NewHTTPPublisher(settings.ServerAddress, logger),
 	}
 }
 
@@ -56,7 +56,7 @@ func (service *Service) Start(ctx context.Context) error {
 }
 
 func (service *Service) startMainLoop(ctx context.Context) {
-	ticker := time.NewTicker(service.settings.reportInterval)
+	ticker := time.NewTicker(service.settings.ReportInterval)
 	defer ticker.Stop()
 
 	for {

@@ -3,43 +3,31 @@ package storage
 import "time"
 
 type PersistSettings struct {
-	storeInterval time.Duration
-	storeFile     string
-	restore       bool
+	StoreInterval time.Duration
+	StoreFile     string
+	Restore       bool
 }
 
 func NewPersistSettings(storeInterval time.Duration, storeFile string, restore bool) PersistSettings {
 	return PersistSettings{
-		storeInterval: storeInterval,
-		storeFile:     storeFile,
-		restore:       restore,
+		StoreInterval: storeInterval,
+		StoreFile:     storeFile,
+		Restore:       restore,
 	}
 }
 
 func (ps PersistSettings) ShouldPersist() bool {
-	return ps.storeFile != ""
+	return ps.StoreFile != ""
 }
 
 func (ps PersistSettings) ShouldSyncPersist() bool {
-	return ps.ShouldPersist() && ps.storeInterval == 0
+	return ps.ShouldPersist() && ps.StoreInterval == 0
 }
 
 func (ps PersistSettings) ShouldIntervalPersist() bool {
-	return ps.ShouldPersist() && ps.storeInterval != 0
+	return ps.ShouldPersist() && ps.StoreInterval != 0
 }
 
 func (ps PersistSettings) ShouldRestore() bool {
-	return ps.ShouldPersist() && ps.restore
-}
-
-func (ps PersistSettings) GetStoreInterval() time.Duration {
-	return ps.storeInterval
-}
-
-func (ps PersistSettings) GetStoreFile() string {
-	return ps.storeFile
-}
-
-func (ps PersistSettings) GetRestore() bool {
-	return ps.restore
+	return ps.ShouldPersist() && ps.Restore
 }

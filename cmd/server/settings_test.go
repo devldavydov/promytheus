@@ -16,11 +16,11 @@ func TestServerSettingsAdaptDefault(t *testing.T) {
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "127.0.0.1", serverSettings.GetServerAddress())
-	assert.Equal(t, 8080, serverSettings.GetServerPort())
-	assert.Equal(t, 300*time.Second, serverSettings.GetPersistenSettings().GetStoreInterval())
-	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.GetPersistenSettings().GetStoreFile())
-	assert.True(t, serverSettings.GetPersistenSettings().GetRestore())
+	assert.Equal(t, "127.0.0.1", serverSettings.ServerAddress)
+	assert.Equal(t, 8080, serverSettings.ServerPort)
+	assert.Equal(t, 300*time.Second, serverSettings.PersistSettings.StoreInterval)
+	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
+	assert.True(t, serverSettings.PersistSettings.Restore)
 }
 
 func TestServerSettingsAdaptCustomEnv(t *testing.T) {
@@ -38,11 +38,11 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 		serverSettings, err := ServerSettingsAdapt(config)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "1.1.1.1", serverSettings.GetServerAddress())
-		assert.Equal(t, 9999, serverSettings.GetServerPort())
-		assert.Equal(t, time.Duration(0), serverSettings.GetPersistenSettings().GetStoreInterval())
-		assert.Equal(t, storeFile, serverSettings.GetPersistenSettings().GetStoreFile())
-		assert.False(t, serverSettings.GetPersistenSettings().GetRestore())
+		assert.Equal(t, "1.1.1.1", serverSettings.ServerAddress)
+		assert.Equal(t, 9999, serverSettings.ServerPort)
+		assert.Equal(t, time.Duration(0), serverSettings.PersistSettings.StoreInterval)
+		assert.Equal(t, storeFile, serverSettings.PersistSettings.StoreFile)
+		assert.False(t, serverSettings.PersistSettings.Restore)
 	}
 }
 
@@ -54,11 +54,11 @@ func TestServerSettingsAdaptCustomFlag(t *testing.T) {
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "1.1.1.1", serverSettings.GetServerAddress())
-	assert.Equal(t, 9999, serverSettings.GetServerPort())
-	assert.Equal(t, time.Duration(0), serverSettings.GetPersistenSettings().GetStoreInterval())
-	assert.Equal(t, "/tmp/ttt", serverSettings.GetPersistenSettings().GetStoreFile())
-	assert.False(t, serverSettings.GetPersistenSettings().GetRestore())
+	assert.Equal(t, "1.1.1.1", serverSettings.ServerAddress)
+	assert.Equal(t, 9999, serverSettings.ServerPort)
+	assert.Equal(t, time.Duration(0), serverSettings.PersistSettings.StoreInterval)
+	assert.Equal(t, "/tmp/ttt", serverSettings.PersistSettings.StoreFile)
+	assert.False(t, serverSettings.PersistSettings.Restore)
 }
 
 func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
@@ -74,11 +74,11 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "1.1.1.1", serverSettings.GetServerAddress())
-	assert.Equal(t, 9999, serverSettings.GetServerPort())
-	assert.Equal(t, time.Duration(0), serverSettings.GetPersistenSettings().GetStoreInterval())
-	assert.Equal(t, "/tmp/ttt", serverSettings.GetPersistenSettings().GetStoreFile())
-	assert.False(t, serverSettings.GetPersistenSettings().GetRestore())
+	assert.Equal(t, "1.1.1.1", serverSettings.ServerAddress)
+	assert.Equal(t, 9999, serverSettings.ServerPort)
+	assert.Equal(t, time.Duration(0), serverSettings.PersistSettings.StoreInterval)
+	assert.Equal(t, "/tmp/ttt", serverSettings.PersistSettings.StoreFile)
+	assert.False(t, serverSettings.PersistSettings.Restore)
 }
 
 func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
@@ -92,11 +92,11 @@ func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "127.0.0.1", serverSettings.GetServerAddress())
-	assert.Equal(t, 8080, serverSettings.GetServerPort())
-	assert.Equal(t, 1*time.Second, serverSettings.GetPersistenSettings().GetStoreInterval())
-	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.GetPersistenSettings().GetStoreFile())
-	assert.True(t, serverSettings.GetPersistenSettings().GetRestore())
+	assert.Equal(t, "127.0.0.1", serverSettings.ServerAddress)
+	assert.Equal(t, 8080, serverSettings.ServerPort)
+	assert.Equal(t, 1*time.Second, serverSettings.PersistSettings.StoreInterval)
+	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
+	assert.True(t, serverSettings.PersistSettings.Restore)
 }
 
 func TestServerSettingsAdaptCustomError(t *testing.T) {

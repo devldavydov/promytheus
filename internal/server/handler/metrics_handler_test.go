@@ -580,6 +580,7 @@ func TestMetricsHandler(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		if tt.xfail {
 			continue
 		}
