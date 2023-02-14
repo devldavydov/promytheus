@@ -17,23 +17,23 @@ type Collector interface {
 }
 
 type Publisher interface {
-	Publish([]metric.Metrics) (metric.Metrics, error)
+	Publish(context.Context, []metric.Metrics) (metric.Metrics, error)
 }
 
 type Service struct {
-	settings             ServiceSettings
-	logger               *logrus.Logger
-	failedPublishMetrics metric.Metrics
-	collector            Collector
-	publisher            Publisher
+	settings                    ServiceSettings
+	logger                      *logrus.Logger
+	failedPublishCounterMetrics metric.Metrics
+	collector                   Collector
+	publisher                   Publisher
 }
 
 func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 	return &Service{
 		settings:  settings,
 		logger:    logger,
-		collector: collector.NewRuntimeCollector(settings.pollInterval, logger),
-		publisher: publisher.NewHTTPPublisher(settings.serverAddress, logger),
+		collector: collector.NewRuntimeCollector(settings.PollInterval, logger),
+		publisher: publisher.NewHTTPPublisher(settings.ServerAddress, logger),
 	}
 }
 
@@ -56,7 +56,7 @@ func (service *Service) Start(ctx context.Context) error {
 }
 
 func (service *Service) startMainLoop(ctx context.Context) {
-	ticker := time.NewTicker(service.settings.reportInterval)
+	ticker := time.NewTicker(service.settings.ReportInterval)
 	defer ticker.Stop()
 
 	for {
@@ -70,10 +70,12 @@ func (service *Service) startMainLoop(ctx context.Context) {
 				continue
 			}
 
-			failedPublishMetrics, err := service.publisher.Publish([]metric.Metrics{metrics, service.failedPublishMetrics})
+			failedPublishCounterMetrics, err := service.publisher.Publish(ctx, []metric.Metrics{metrics, service.failedPublishCounterMetrics})
 			if err != nil {
 				service.logger.Errorf("Publish metrics error: %v", err)
-				service.failedPublishMetrics = failedPublishMetrics
+				service.failedPublishCounterMetrics = failedPublishCounterMetrics
+			} else {
+				service.failedPublishCounterMetrics = nil
 			}
 		case <-ctx.Done():
 			service.logger.Info("Main loop shutdown due to context closed")
