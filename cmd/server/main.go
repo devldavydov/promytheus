@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/devldavydov/promytheus/internal/common/logging"
+	"github.com/devldavydov/promytheus/internal/common/log"
 	"github.com/devldavydov/promytheus/internal/server"
 )
 
@@ -19,7 +19,7 @@ func main() {
 		panic(fmt.Sprintf("Failed to load flag and ENV settings: %v", err))
 	}
 
-	logger, err := logging.CreateLogger(config.LogLevel)
+	logger, err := log.NewLogger(config.LogLevel)
 	if err != nil {
 		panic(err)
 	}

@@ -1,4 +1,4 @@
-package logging
+package log
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func CreateLogger(logLevel string) (*logrus.Logger, error) {
+func NewLogger(logLevel string) (*logrus.Logger, error) {
 	logger := logrus.New()
 	logLvl, err := logrus.ParseLevel(logLevel)
 	if err != nil {

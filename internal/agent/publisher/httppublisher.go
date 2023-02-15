@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const httpClientTimeout = 1 * time.Second
+const _httpClientTimeout = 1 * time.Second
 
 type HTTPPublisher struct {
 	serverAddress *url.URL
@@ -24,7 +24,7 @@ type HTTPPublisher struct {
 
 func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublisher {
 	client := &http.Client{
-		Timeout: httpClientTimeout,
+		Timeout: _httpClientTimeout,
 	}
 
 	return &HTTPPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}

@@ -21,6 +21,8 @@ type MemStorage struct {
 	logger          *logrus.Logger
 }
 
+var _ Storage = (*MemStorage)(nil)
+
 func NewMemStorage(ctx context.Context, logger *logrus.Logger, persistSettings PersistSettings) (*MemStorage, error) {
 	memStorage := &MemStorage{
 		persistSettings: persistSettings,
