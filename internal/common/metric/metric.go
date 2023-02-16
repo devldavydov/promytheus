@@ -9,6 +9,7 @@ var AllTypes = map[string]bool{
 
 type MetricValue interface {
 	fmt.Stringer
+
 	TypeName() string
 }
 

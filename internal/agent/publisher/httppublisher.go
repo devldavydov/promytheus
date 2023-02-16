@@ -53,9 +53,8 @@ func (httpPublisher *HTTPPublisher) Publish(ctx context.Context, metricsList []m
 
 	if len(failedPublishCounterMetrics) != 0 {
 		return failedPublishCounterMetrics, fmt.Errorf("failed to publish: %+v", failedPublishCounterMetrics)
-	} else {
-		return nil, nil
 	}
+	return nil, nil
 }
 
 func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue metric.MetricValue) error {

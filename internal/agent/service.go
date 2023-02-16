@@ -74,9 +74,9 @@ func (service *Service) startMainLoop(ctx context.Context) {
 			if err != nil {
 				service.logger.Errorf("Publish metrics error: %v", err)
 				service.failedPublishCounterMetrics = failedPublishCounterMetrics
-			} else {
-				service.failedPublishCounterMetrics = nil
+				continue
 			}
+			service.failedPublishCounterMetrics = nil
 		case <-ctx.Done():
 			service.logger.Info("Main loop shutdown due to context closed")
 			return

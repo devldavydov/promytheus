@@ -31,9 +31,10 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 
 		if errors.Is(err, ErrUnknownMetricType) {
 			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
-		} else {
-			createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			return
 		}
+
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 
@@ -46,9 +47,10 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 	if err != nil {
 		handler.logger.Errorf("Update metric error on request [%s], err: %v", req.URL, err)
 		createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
-	} else {
-		createResponse(rw, _http.ContentTypeTextPlain, http.StatusOK, http.StatusText(http.StatusOK))
+		return
 	}
+
+	createResponse(rw, _http.ContentTypeTextPlain, http.StatusOK, http.StatusText(http.StatusOK))
 }
 
 func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *http.Request) {
@@ -66,9 +68,10 @@ func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *htt
 
 		if errors.Is(err, ErrUnknownMetricType) {
 			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
-		} else {
-			createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			return
 		}
+
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 
@@ -84,14 +87,15 @@ func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *htt
 	if err != nil {
 		handler.logger.Errorf("Update metric error on request [%s], JSON: [%v], err: %v", req.URL, metricReq, err)
 		createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
-	} else {
-		if metric.GaugeTypeName == params.metricType {
-			metricResp.Value = val.(metric.Gauge).FloatP()
-		} else if metric.CounterTypeName == params.metricType {
-			metricResp.Delta = val.(metric.Counter).IntP()
-		}
-		createJSONResponse(rw, http.StatusOK, metricResp)
+		return
 	}
+
+	if metric.GaugeTypeName == params.metricType {
+		metricResp.Value = val.(metric.Gauge).FloatP()
+	} else if metric.CounterTypeName == params.metricType {
+		metricResp.Delta = val.(metric.Counter).IntP()
+	}
+	createJSONResponse(rw, http.StatusOK, metricResp)
 }
 
 func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Request) {
@@ -103,9 +107,10 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 
 		if errors.Is(err, ErrUnknownMetricType) {
 			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
-		} else {
-			createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			return
 		}
+
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 
@@ -119,13 +124,15 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 	if err != nil {
 		if errors.Is(err, storage.ErrMetricNotFound) {
 			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotFound, http.StatusText(http.StatusNotFound))
-		} else {
-			handler.logger.Errorf("Get metric error on request [%s], err: %v", req.URL, err)
-			createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+			return
 		}
-	} else {
-		createResponse(rw, _http.ContentTypeTextPlain, http.StatusOK, value.String())
+
+		handler.logger.Errorf("Get metric error on request [%s], err: %v", req.URL, err)
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
 	}
+
+	createResponse(rw, _http.ContentTypeTextPlain, http.StatusOK, value.String())
 }
 
 func (handler *MetricsHandler) GetMetricJSON(rw http.ResponseWriter, req *http.Request) {
@@ -143,9 +150,10 @@ func (handler *MetricsHandler) GetMetricJSON(rw http.ResponseWriter, req *http.R
 
 		if errors.Is(err, ErrUnknownMetricType) {
 			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
-		} else {
-			createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			return
 		}
+
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 
@@ -161,18 +169,20 @@ func (handler *MetricsHandler) GetMetricJSON(rw http.ResponseWriter, req *http.R
 	if err != nil {
 		if errors.Is(err, storage.ErrMetricNotFound) {
 			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotFound, http.StatusText(http.StatusNotFound))
-		} else {
-			handler.logger.Errorf("Get metric error on request [%s], JSON: [%v] err: %v", req.URL, metricReq, err)
-			createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+			return
 		}
-	} else {
-		if metric.GaugeTypeName == metricReq.MType {
-			metricResp.Value = val.(metric.Gauge).FloatP()
-		} else if metric.CounterTypeName == metricReq.MType {
-			metricResp.Delta = val.(metric.Counter).IntP()
-		}
-		createJSONResponse(rw, http.StatusOK, metricResp)
+
+		handler.logger.Errorf("Get metric error on request [%s], JSON: [%v] err: %v", req.URL, metricReq, err)
+		createResponse(rw, _http.ContentTypeTextPlain, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
 	}
+
+	if metric.GaugeTypeName == metricReq.MType {
+		metricResp.Value = val.(metric.Gauge).FloatP()
+	} else if metric.CounterTypeName == metricReq.MType {
+		metricResp.Delta = val.(metric.Counter).IntP()
+	}
+	createJSONResponse(rw, http.StatusOK, metricResp)
 }
 
 func (handler *MetricsHandler) GetMetrics(rw http.ResponseWriter, req *http.Request) {
