@@ -68,6 +68,8 @@ func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue
 	} else if metric.CounterTypeName == metricValue.TypeName() {
 		metricReq.Delta = metricValue.(metric.Counter).IntP()
 	}
+	metricReq.Hash = metricValue.Hmac(metricName, "key")
+
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(metricReq)
 

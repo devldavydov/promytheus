@@ -2,12 +2,17 @@ package metric
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
+
+	"github.com/devldavydov/promytheus/internal/common/hash"
 )
 
 const CounterTypeName string = "counter"
 
 type Counter int64
+
+var _ MetricValue = (*Counter)(nil)
 
 func NewCounterFromString(val string) (Counter, error) {
 	intVal, err := strconv.ParseInt(val, 10, 64)
@@ -39,4 +44,8 @@ func (c Counter) String() string {
 
 func (c Counter) TypeName() string {
 	return CounterTypeName
+}
+
+func (c Counter) Hmac(id, key string) string {
+	return hash.HmacSHA256(fmt.Sprintf("%s:counter:%d", id, c), key)
 }
