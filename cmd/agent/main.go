@@ -4,28 +4,35 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/devldavydov/promytheus/internal/agent"
-	"github.com/devldavydov/promytheus/internal/common/log"
+	_log "github.com/devldavydov/promytheus/internal/common/log"
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	config, err := LoadConfig(*flag.CommandLine, os.Args[1:])
 	if err != nil {
-		panic(fmt.Sprintf("Failed to load flag and ENV settings: %v", err))
+		return fmt.Errorf("failed to load flag and ENV settings: %w", err)
 	}
 
-	logger, err := log.NewLogger(config.LogLevel)
+	logger, err := _log.NewLogger(config.LogLevel)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to create logger: %w", err)
 	}
 
 	agentSettings, err := AgentSettingsAdapt(config)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to create agent settings: %v", err))
+		return fmt.Errorf("failed to create agent settings: %w", err)
 	}
 
 	agentService := agent.NewService(agentSettings, logger)
@@ -33,9 +40,5 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	err = agentService.Start(ctx)
-	if err != nil {
-		logger.Error(err)
-		os.Exit(1)
-	}
+	return agentService.Start(ctx)
 }
