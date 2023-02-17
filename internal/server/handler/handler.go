@@ -13,6 +13,7 @@ var (
 	ErrUnknownMetricType = errors.New("unknowm metric type")
 	ErrEmptyMetricName   = errors.New("empty metric name")
 	ErrWrongMetricValue  = errors.New("wrong metric value")
+	ErrMetricHashCheck   = errors.New("metric hash check fail")
 )
 
 func createResponse(rw http.ResponseWriter, contentType string, statusCode int, body string) {

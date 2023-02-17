@@ -32,6 +32,7 @@ type testRequest struct {
 	url         string
 	body        io.Reader
 	contentType *string
+	hmacKey     *string
 	headers     map[string][]string
 }
 
@@ -592,7 +593,7 @@ func TestMetricsHandler(t *testing.T) {
 				tt.stgInitFunc(storage)
 			}
 
-			metricsHandler := NewMetricsHandler(storage, logger)
+			metricsHandler := NewMetricsHandler(storage, tt.req.hmacKey, logger)
 			r := NewRouter(metricsHandler, middleware.Gzip)
 			ts := httptest.NewServer(r)
 			defer ts.Close()

@@ -19,6 +19,7 @@ const (
 	_defaultconfigStoreInterval = 300 * time.Second
 	_defaultConfigStoreFile     = "/tmp/devops-metrics-db.json"
 	_defaultConfigRestore       = true
+	_defaultHmacKey             = ""
 )
 
 type Config struct {
@@ -26,6 +27,7 @@ type Config struct {
 	StoreInterval time.Duration
 	StoreFile     string
 	Restore       bool
+	HmacKey       string
 	LogLevel      string
 }
 
@@ -38,6 +40,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.DurationVar(&config.StoreInterval, "i", _defaultconfigStoreInterval, "store interval")
 	flagSet.StringVar(&config.StoreFile, "f", _defaultConfigStoreFile, "store file")
 	flagSet.BoolVar(&config.Restore, "r", _defaultConfigRestore, "restore")
+	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flagSet.PrintDefaults()
@@ -53,11 +56,6 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
-	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
-	if err != nil {
-		return nil, err
-	}
-
 	config.StoreInterval, err = env.GetVariable("STORE_INTERVAL", env.CastDuration, config.StoreInterval)
 	if err != nil {
 		return nil, err
@@ -69,6 +67,16 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	}
 
 	config.Restore, err = env.GetVariable("RESTORE", env.CastBool, config.Restore)
+	if err != nil {
+		return nil, err
+	}
+
+	config.HmacKey, err = env.GetVariable("KEY", env.CastString, config.HmacKey)
+	if err != nil {
+		return nil, err
+	}
+
+	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -89,5 +97,5 @@ func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
 	}
 
 	persistSettings := storage.NewPersistSettings(config.StoreInterval, config.StoreFile, config.Restore)
-	return server.NewServiceSettings(address, port, persistSettings), nil
+	return server.NewServiceSettings(address, port, config.HmacKey, persistSettings), nil
 }

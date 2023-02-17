@@ -71,7 +71,8 @@ func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue
 	}
 
 	if httpPublisher.hmacKey != nil {
-		metricReq.Hash = metricValue.Hmac(metricName, *httpPublisher.hmacKey)
+		hash := metricValue.Hmac(metricName, *httpPublisher.hmacKey)
+		metricReq.Hash = &hash
 	}
 
 	var buf bytes.Buffer

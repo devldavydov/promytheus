@@ -33,6 +33,7 @@ func (service *Service) Start(ctx context.Context) error {
 
 	metricsHandler := handler.NewMetricsHandler(
 		memStorage,
+		service.settings.HmacKey,
 		service.logger,
 	)
 	r := handler.NewRouter(metricsHandler, middleware.RealIP, middleware.Logger, middleware.Recoverer, _middleware.Gzip)

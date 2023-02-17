@@ -17,11 +17,12 @@ import (
 
 type MetricsHandler struct {
 	storage storage.Storage
+	hmacKey *string
 	logger  *logrus.Logger
 }
 
-func NewMetricsHandler(storage storage.Storage, logger *logrus.Logger) *MetricsHandler {
-	return &MetricsHandler{storage: storage, logger: logger}
+func NewMetricsHandler(storage storage.Storage, hmacKey *string, logger *logrus.Logger) *MetricsHandler {
+	return &MetricsHandler{storage: storage, hmacKey: hmacKey, logger: logger}
 }
 
 func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Request) {
@@ -70,6 +71,10 @@ func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *htt
 			createResponse(rw, _http.ContentTypeTextPlain, http.StatusNotImplemented, http.StatusText(http.StatusNotImplemented))
 			return
 		}
+		if errors.Is(err, ErrMetricHashCheck) {
+			createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+			return
+		}
 
 		createResponse(rw, _http.ContentTypeTextPlain, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
@@ -95,6 +100,12 @@ func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *htt
 	} else if metric.CounterTypeName == params.metricType {
 		metricResp.Delta = val.(metric.Counter).IntP()
 	}
+
+	if handler.hmacKey != nil {
+		hash := val.(metric.MetricValue).Hmac(params.metricName, *handler.hmacKey)
+		metricResp.Hash = &hash
+	}
+
 	createJSONResponse(rw, http.StatusOK, metricResp)
 }
 
@@ -182,6 +193,12 @@ func (handler *MetricsHandler) GetMetricJSON(rw http.ResponseWriter, req *http.R
 	} else if metric.CounterTypeName == metricReq.MType {
 		metricResp.Delta = val.(metric.Counter).IntP()
 	}
+
+	if handler.hmacKey != nil {
+		hash := val.(metric.MetricValue).Hmac(metricReq.ID, *handler.hmacKey)
+		metricResp.Hash = &hash
+	}
+
 	createJSONResponse(rw, http.StatusOK, metricResp)
 }
 

@@ -82,7 +82,7 @@ test_devops: build
 	 -server-port=$${SERVER_PORT} \
 	 -file-storage-path=$${TEMP_FILE} \
 	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
-	 -key=$${TEMP_FILE}
+	 -key=praktikum_devops_test
 
 .PHONY: clean
 clean:
