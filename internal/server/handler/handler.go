@@ -22,6 +22,12 @@ func createResponse(rw http.ResponseWriter, contentType string, statusCode int, 
 	io.WriteString(rw, body)
 }
 
+func createErrResponse(rw http.ResponseWriter, statusCode int) {
+	rw.Header().Set("Content-Type", _http.ContentTypeTextPlain)
+	rw.WriteHeader(statusCode)
+	io.WriteString(rw, http.StatusText(statusCode))
+}
+
 func createJSONResponse(rw http.ResponseWriter, statusCode int, body interface{}) {
 	rw.Header().Set("Content-Type", _http.ContentTypeApplicationJSON)
 	rw.WriteHeader(statusCode)
