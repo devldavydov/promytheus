@@ -13,12 +13,19 @@ var (
 	ErrUnknownMetricType = errors.New("unknowm metric type")
 	ErrEmptyMetricName   = errors.New("empty metric name")
 	ErrWrongMetricValue  = errors.New("wrong metric value")
+	ErrMetricHashCheck   = errors.New("metric hash check fail")
 )
 
 func createResponse(rw http.ResponseWriter, contentType string, statusCode int, body string) {
 	rw.Header().Set("Content-Type", contentType)
 	rw.WriteHeader(statusCode)
 	io.WriteString(rw, body)
+}
+
+func createErrResponse(rw http.ResponseWriter, statusCode int) {
+	rw.Header().Set("Content-Type", _http.ContentTypeTextPlain)
+	rw.WriteHeader(statusCode)
+	io.WriteString(rw, http.StatusText(statusCode))
 }
 
 func createJSONResponse(rw http.ResponseWriter, statusCode int, body interface{}) {

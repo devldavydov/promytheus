@@ -14,20 +14,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const httpClientTimeout = 1 * time.Second
+const _httpClientTimeout = 1 * time.Second
 
 type HTTPPublisher struct {
 	serverAddress *url.URL
+	hmacKey       *string
 	httpClient    *http.Client
 	logger        *logrus.Logger
 }
 
-func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublisher {
+func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, logger *logrus.Logger) *HTTPPublisher {
 	client := &http.Client{
-		Timeout: httpClientTimeout,
+		Timeout: _httpClientTimeout,
 	}
 
-	return &HTTPPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}
+	return &HTTPPublisher{serverAddress: serverAddress, hmacKey: hmacKey, httpClient: client, logger: logger}
 }
 
 func (httpPublisher *HTTPPublisher) Publish(ctx context.Context, metricsList []metric.Metrics) (metric.Metrics, error) {
@@ -53,9 +54,8 @@ func (httpPublisher *HTTPPublisher) Publish(ctx context.Context, metricsList []m
 
 	if len(failedPublishCounterMetrics) != 0 {
 		return failedPublishCounterMetrics, fmt.Errorf("failed to publish: %+v", failedPublishCounterMetrics)
-	} else {
-		return nil, nil
 	}
+	return nil, nil
 }
 
 func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue metric.MetricValue) error {
@@ -69,6 +69,12 @@ func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue
 	} else if metric.CounterTypeName == metricValue.TypeName() {
 		metricReq.Delta = metricValue.(metric.Counter).IntP()
 	}
+
+	if httpPublisher.hmacKey != nil {
+		hash := metricValue.Hmac(metricName, *httpPublisher.hmacKey)
+		metricReq.Hash = &hash
+	}
+
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(metricReq)
 

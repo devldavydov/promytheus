@@ -32,6 +32,7 @@ type testRequest struct {
 	url         string
 	body        io.Reader
 	contentType *string
+	hmacKey     *string
 	headers     map[string][]string
 }
 
@@ -45,7 +46,7 @@ func TestMetricsHandler(t *testing.T) {
 		resp        testResponse
 		stgInitFunc func(storage.Storage)
 	}{
-		/// Update metric tests
+		/// Update metric
 		{
 			name: "update metric: failed GET request",
 			req: testRequest{
@@ -178,7 +179,7 @@ func TestMetricsHandler(t *testing.T) {
 				contentType: _http.ContentTypeTextPlain,
 			},
 		},
-		/// Update JSON metrics test
+		/// Update JSON metric
 		{
 			name: "update JSON metric: failed GET request",
 			req: testRequest{
@@ -355,7 +356,68 @@ func TestMetricsHandler(t *testing.T) {
 				s.SetCounterMetric("foo", 123)
 			},
 		},
-		/// Get metric test
+		/// Update JSON metric with hash
+		{
+			name: "update JSON metric with valid hash: gauge",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+				hmacKey:     s("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+		},
+		{
+			name: "update JSON metric with invalid hash: gauge",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+				hmacKey:     s("foobar2"),
+			},
+			resp: testResponse{
+				code:        http.StatusBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
+			name: "update JSON metric with valid hash: counter",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+				hmacKey:     s("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+		},
+		{
+			name: "update JSON metric with invalid hash: counter",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+				hmacKey:     s("foobar2"),
+			},
+			resp: testResponse{
+				code:        http.StatusBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		/// Get metric
 		{
 			name: "get metric: failed POST request",
 			req: testRequest{
@@ -437,7 +499,7 @@ func TestMetricsHandler(t *testing.T) {
 				s.SetGaugeMetric("metric1", 1.23456)
 			},
 		},
-		/// Get JSON metric test
+		/// Get JSON metric
 		{
 			name: "get JSON metric: failed GET request",
 			req: testRequest{
@@ -531,6 +593,43 @@ func TestMetricsHandler(t *testing.T) {
 				s.SetCounterMetric("foo", 123)
 			},
 		},
+		/// Get JSON metric with hash
+		{
+			name: "get JSON metric with hash: gauge",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        bodyStringReader(`{"id":"Sys", "type":"gauge"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+				hmacKey:     s("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetGaugeMetric("Sys", 13220880)
+			},
+		},
+		{
+			name: "get JSON metric with hash: counter",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        bodyStringReader(`{"id":"PollCount", "type":"counter"}`),
+				contentType: s(_http.ContentTypeApplicationJSON),
+				hmacKey:     s("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetCounterMetric("PollCount", 5)
+			},
+		},
 		/// Get all metrics page
 		{
 			name: "get all metrics page: empty",
@@ -592,7 +691,7 @@ func TestMetricsHandler(t *testing.T) {
 				tt.stgInitFunc(storage)
 			}
 
-			metricsHandler := NewMetricsHandler(storage, logger)
+			metricsHandler := NewMetricsHandler(storage, tt.req.hmacKey, logger)
 			r := NewRouter(metricsHandler, middleware.Gzip)
 			ts := httptest.NewServer(r)
 			defer ts.Close()

@@ -21,6 +21,8 @@ type MemStorage struct {
 	logger          *logrus.Logger
 }
 
+var _ Storage = (*MemStorage)(nil)
+
 func NewMemStorage(ctx context.Context, logger *logrus.Logger, persistSettings PersistSettings) (*MemStorage, error) {
 	memStorage := &MemStorage{
 		persistSettings: persistSettings,
@@ -138,9 +140,9 @@ func (storage *MemStorage) restore() error {
 		if os.IsNotExist(err) {
 			storage.logger.Warnf("Restore file [%s] not exists, skipping...", storage.persistSettings.StoreFile)
 			return nil
-		} else {
-			return fmt.Errorf("restore open file [%s] err: %w", storage.persistSettings.StoreFile, err)
 		}
+
+		return fmt.Errorf("restore open file [%s] err: %w", storage.persistSettings.StoreFile, err)
 	}
 	defer file.Close()
 
