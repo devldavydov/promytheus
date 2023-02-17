@@ -33,7 +33,7 @@ func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 		settings:  settings,
 		logger:    logger,
 		collector: collector.NewRuntimeCollector(settings.PollInterval, logger),
-		publisher: publisher.NewHTTPPublisher(settings.ServerAddress, logger),
+		publisher: publisher.NewHTTPPublisher(settings.ServerAddress, settings.HmacKey, logger),
 	}
 }
 
