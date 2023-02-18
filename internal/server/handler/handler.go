@@ -22,7 +22,7 @@ func createResponse(rw http.ResponseWriter, contentType string, statusCode int, 
 	io.WriteString(rw, body)
 }
 
-func createErrResponse(rw http.ResponseWriter, statusCode int) {
+func createStatusResponse(rw http.ResponseWriter, statusCode int) {
 	rw.Header().Set("Content-Type", _http.ContentTypeTextPlain)
 	rw.WriteHeader(statusCode)
 	io.WriteString(rw, http.StatusText(statusCode))

@@ -1,5 +1,10 @@
 .PHONY: all
-all: clean build test
+all: clean mock_gen build test
+
+.PHONY: mock_gen
+mock_gen:
+	@echo "\n### $@"
+	@mockgen -destination=internal/server/mocks/mock_storage.go -package=mocks github.com/devldavydov/promytheus/internal/server/storage Storage
 
 .PHONY: build
 build: build_agent build_server

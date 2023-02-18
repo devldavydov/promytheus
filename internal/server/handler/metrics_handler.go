@@ -16,13 +16,14 @@ import (
 )
 
 type MetricsHandler struct {
-	storage storage.Storage
-	hmacKey *string
-	logger  *logrus.Logger
+	storage   storage.Storage
+	dbstorage storage.Storage
+	hmacKey   *string
+	logger    *logrus.Logger
 }
 
-func NewMetricsHandler(storage storage.Storage, hmacKey *string, logger *logrus.Logger) *MetricsHandler {
-	return &MetricsHandler{storage: storage, hmacKey: hmacKey, logger: logger}
+func NewMetricsHandler(storage storage.Storage, dbstorage storage.Storage, hmacKey *string, logger *logrus.Logger) *MetricsHandler {
+	return &MetricsHandler{storage: storage, dbstorage: dbstorage, hmacKey: hmacKey, logger: logger}
 }
 
 func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Request) {
@@ -41,7 +42,7 @@ func (handler *MetricsHandler) UpdateMetric(rw http.ResponseWriter, req *http.Re
 
 	if err != nil {
 		handler.logger.Errorf("Update metric error on request [%s], err: %v", req.URL, err)
-		createErrResponse(rw, http.StatusInternalServerError)
+		createStatusResponse(rw, http.StatusInternalServerError)
 		return
 	}
 
@@ -53,7 +54,7 @@ func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *htt
 
 	err := json.NewDecoder(req.Body).Decode(&metricReq)
 	if err != nil {
-		createErrResponse(rw, http.StatusBadRequest)
+		createStatusResponse(rw, http.StatusBadRequest)
 		return
 	}
 
@@ -75,7 +76,7 @@ func (handler *MetricsHandler) UpdateMetricJSON(rw http.ResponseWriter, req *htt
 
 	if err != nil {
 		handler.logger.Errorf("Update metric error on request [%s], JSON: [%v], err: %v", req.URL, metricReq, err)
-		createErrResponse(rw, http.StatusInternalServerError)
+		createStatusResponse(rw, http.StatusInternalServerError)
 		return
 	}
 
@@ -112,12 +113,12 @@ func (handler *MetricsHandler) GetMetric(rw http.ResponseWriter, req *http.Reque
 
 	if err != nil {
 		if errors.Is(err, storage.ErrMetricNotFound) {
-			createErrResponse(rw, http.StatusNotFound)
+			createStatusResponse(rw, http.StatusNotFound)
 			return
 		}
 
 		handler.logger.Errorf("Get metric error on request [%s], err: %v", req.URL, err)
-		createErrResponse(rw, http.StatusInternalServerError)
+		createStatusResponse(rw, http.StatusInternalServerError)
 		return
 	}
 
@@ -129,7 +130,7 @@ func (handler *MetricsHandler) GetMetricJSON(rw http.ResponseWriter, req *http.R
 
 	err := json.NewDecoder(req.Body).Decode(&metricReq)
 	if err != nil {
-		createErrResponse(rw, http.StatusBadRequest)
+		createStatusResponse(rw, http.StatusBadRequest)
 		return
 	}
 
@@ -151,12 +152,12 @@ func (handler *MetricsHandler) GetMetricJSON(rw http.ResponseWriter, req *http.R
 
 	if err != nil {
 		if errors.Is(err, storage.ErrMetricNotFound) {
-			createErrResponse(rw, http.StatusNotFound)
+			createStatusResponse(rw, http.StatusNotFound)
 			return
 		}
 
 		handler.logger.Errorf("Get metric error on request [%s], JSON: [%v] err: %v", req.URL, metricReq, err)
-		createErrResponse(rw, http.StatusInternalServerError)
+		createStatusResponse(rw, http.StatusInternalServerError)
 		return
 	}
 
@@ -199,7 +200,7 @@ func (handler *MetricsHandler) GetMetrics(rw http.ResponseWriter, req *http.Requ
 	metrics, err := handler.storage.GetAllMetrics()
 	if err != nil {
 		handler.logger.Errorf("Get all metrics error: %v", err)
-		createErrResponse(rw, http.StatusInternalServerError)
+		createStatusResponse(rw, http.StatusInternalServerError)
 		return
 	}
 	tmpl, _ := template.New("metrics").Parse(pageTemplate)
@@ -208,15 +209,23 @@ func (handler *MetricsHandler) GetMetrics(rw http.ResponseWriter, req *http.Requ
 	createResponse(rw, _http.ContentTypeHTML, http.StatusOK, buf.String())
 }
 
+func (handler *MetricsHandler) Ping(rw http.ResponseWriter, req *http.Request) {
+	if handler.dbstorage.Ping() {
+		createStatusResponse(rw, http.StatusOK)
+		return
+	}
+	createStatusResponse(rw, http.StatusInternalServerError)
+}
+
 func createResponseOnRequestError(rw http.ResponseWriter, err error) {
 	if errors.Is(err, ErrUnknownMetricType) {
-		createErrResponse(rw, http.StatusNotImplemented)
+		createStatusResponse(rw, http.StatusNotImplemented)
 		return
 	}
 	if errors.Is(err, ErrMetricHashCheck) {
-		createErrResponse(rw, http.StatusBadRequest)
+		createStatusResponse(rw, http.StatusBadRequest)
 		return
 	}
 
-	createErrResponse(rw, http.StatusBadRequest)
+	createStatusResponse(rw, http.StatusBadRequest)
 }

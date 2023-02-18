@@ -12,8 +12,10 @@ import (
 
 	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/server/middleware"
+	"github.com/devldavydov/promytheus/internal/server/mocks"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/devldavydov/promytheus/tests/data"
+	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,6 +47,7 @@ func TestMetricsHandler(t *testing.T) {
 		req         testRequest
 		resp        testResponse
 		stgInitFunc func(storage.Storage)
+		stgMockFunc func(*mocks.MockStorage)
 	}{
 		/// Update metric
 		{
@@ -632,6 +635,18 @@ func TestMetricsHandler(t *testing.T) {
 		},
 		/// Get all metrics page
 		{
+			name: "get all metrics page: failed POST request",
+			req: testRequest{
+				method: http.MethodPost,
+				url:    "/",
+			},
+			resp: testResponse{
+				code:        http.StatusMethodNotAllowed,
+				body:        "",
+				contentType: "",
+			},
+		},
+		{
 			name: "get all metrics page: empty",
 			req: testRequest{
 				method: http.MethodGet,
@@ -676,6 +691,49 @@ func TestMetricsHandler(t *testing.T) {
 				s.SetCounterMetric("zzz", 3)
 			},
 		},
+		/// Ping DB connection
+		{
+			name: "ping db connection: failed POST request",
+			req: testRequest{
+				method: http.MethodPost,
+				url:    "/ping",
+			},
+			resp: testResponse{
+				code:        http.StatusMethodNotAllowed,
+				body:        "",
+				contentType: "",
+			},
+		},
+		{
+			name: "ping db connection: success check",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/ping",
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        http.StatusText(http.StatusOK),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().Ping().Return(true)
+			},
+		},
+		{
+			name: "ping db connection: fail check",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/ping",
+			},
+			resp: testResponse{
+				code:        http.StatusInternalServerError,
+				body:        http.StatusText(http.StatusInternalServerError),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().Ping().Return(false)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -685,13 +743,20 @@ func TestMetricsHandler(t *testing.T) {
 		}
 		t.Run(tt.name, func(t *testing.T) {
 			logger := logrus.New()
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-			storage, _ := storage.NewMemStorage(context.TODO(), logger, storage.NewPersistSettings(0, "", false))
+			stg, _ := storage.NewMemStorage(context.TODO(), logger, storage.NewPersistSettings(0, "", false))
 			if tt.stgInitFunc != nil {
-				tt.stgInitFunc(storage)
+				tt.stgInitFunc(stg)
 			}
 
-			metricsHandler := NewMetricsHandler(storage, tt.req.hmacKey, logger)
+			pgstg := mocks.NewMockStorage(ctrl)
+			if tt.stgMockFunc != nil {
+				tt.stgMockFunc(pgstg)
+			}
+
+			metricsHandler := NewMetricsHandler(stg, pgstg, tt.req.hmacKey, logger)
 			r := NewRouter(metricsHandler, middleware.Gzip)
 			ts := httptest.NewServer(r)
 			defer ts.Close()

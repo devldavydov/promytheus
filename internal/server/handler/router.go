@@ -14,5 +14,6 @@ func NewRouter(metricsHanlder *MetricsHandler, middlewares ...func(http.Handler)
 	r.Get("/value/{metricType}/{metricName}", metricsHanlder.GetMetric)
 	r.Post("/value/", metricsHanlder.GetMetricJSON)
 	r.Get("/", metricsHanlder.GetMetrics)
+	r.Get("/ping", metricsHanlder.Ping)
 	return r
 }

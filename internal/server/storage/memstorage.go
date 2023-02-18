@@ -111,6 +111,12 @@ func (storage *MemStorage) GetAllMetrics() ([]StorageItem, error) {
 	return append(append(items, counterItems...), gaugeItems...), nil
 }
 
+func (storage *MemStorage) Ping() bool {
+	return true
+}
+
+func (storage *MemStorage) Close() {}
+
 func (storage *MemStorage) init(ctx context.Context) error {
 	if storage.persistSettings.ShouldRestore() {
 		err := storage.restore()

@@ -20,6 +20,7 @@ const (
 	_defaultConfigStoreFile     = "/tmp/devops-metrics-db.json"
 	_defaultConfigRestore       = true
 	_defaultHmacKey             = ""
+	_defaultDatabaseDsn         = "postgresql.:5432"
 )
 
 type Config struct {
@@ -28,6 +29,7 @@ type Config struct {
 	StoreFile     string
 	Restore       bool
 	HmacKey       string
+	DatabaseDsn   string
 	LogLevel      string
 }
 
@@ -41,6 +43,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.StringVar(&config.StoreFile, "f", _defaultConfigStoreFile, "store file")
 	flagSet.BoolVar(&config.Restore, "r", _defaultConfigRestore, "restore")
 	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
+	flagSet.StringVar(&config.DatabaseDsn, "d", _defaultDatabaseDsn, "database dsn")
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flagSet.PrintDefaults()
@@ -76,6 +79,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.DatabaseDsn, err = env.GetVariable("DATABASE_DSN", env.CastString, config.DatabaseDsn)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -97,5 +105,5 @@ func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
 	}
 
 	persistSettings := storage.NewPersistSettings(config.StoreInterval, config.StoreFile, config.Restore)
-	return server.NewServiceSettings(address, port, config.HmacKey, persistSettings), nil
+	return server.NewServiceSettings(address, port, config.HmacKey, config.DatabaseDsn, persistSettings), nil
 }

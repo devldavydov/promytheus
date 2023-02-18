@@ -11,6 +11,8 @@ import (
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
+
+	_ "github.com/lib/pq"
 )
 
 type Service struct {
@@ -31,8 +33,17 @@ func (service *Service) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to create storage: %w", err)
 	}
 
+	pgStorage, err := storage.NewPgStorage(service.settings.DatabaseDsn, service.logger)
+	if err != nil {
+		return fmt.Errorf("failed to create storage: %w", err)
+	}
+	defer pgStorage.Close()
+
+	pgStorage.Ping()
+
 	metricsHandler := handler.NewMetricsHandler(
 		memStorage,
+		pgStorage,
 		service.settings.HmacKey,
 		service.logger,
 	)
