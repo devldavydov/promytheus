@@ -1,4 +1,4 @@
-package handler
+package metric
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ type requestParams struct {
 	counterValue metric.Counter
 }
 
-func (handler *MetricsHandler) checkMetricsCommon(metricType, metricName string) error {
+func (handler *MetricHandler) checkMetricsCommon(metricType, metricName string) error {
 	if !metric.AllTypes[metricType] {
 		return ErrUnknownMetricType
 	}
@@ -26,7 +26,7 @@ func (handler *MetricsHandler) checkMetricsCommon(metricType, metricName string)
 	return nil
 }
 
-func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metricValue string) (*requestParams, error) {
+func (handler *MetricHandler) parseUpdateRequest(metricType, metricName, metricValue string) (*requestParams, error) {
 	err := handler.checkMetricsCommon(metricType, metricName)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (handler *MetricsHandler) parseUpdateRequest(metricType, metricName, metric
 	return nil, ErrUnknownMetricType
 }
 
-func (handler *MetricsHandler) parseUpdateRequestJSON(metricReq metric.MetricsDTO) (*requestParams, error) {
+func (handler *MetricHandler) parseUpdateRequestJSON(metricReq metric.MetricsDTO) (*requestParams, error) {
 	err := handler.checkMetricsCommon(metricReq.MType, metricReq.ID)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func (handler *MetricsHandler) parseUpdateRequestJSON(metricReq metric.MetricsDT
 	return nil, ErrUnknownMetricType
 }
 
-func (handler *MetricsHandler) hmacCheck(metricReq metric.MetricsDTO, value metric.MetricValue) error {
+func (handler *MetricHandler) hmacCheck(metricReq metric.MetricsDTO, value metric.MetricValue) error {
 	if handler.hmacKey == nil {
 		return nil
 	}

@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/devldavydov/promytheus/internal/server/handler"
+	"github.com/devldavydov/promytheus/internal/server/handler/metric"
 	_middleware "github.com/devldavydov/promytheus/internal/server/middleware"
 	"github.com/devldavydov/promytheus/internal/server/storage"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
 
@@ -28,6 +29,9 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 func (service *Service) Start(ctx context.Context) error {
 	service.logger.Infof("Server service started on [%s:%d]", service.settings.ServerAddress, service.settings.ServerPort)
 
+	router := chi.NewRouter()
+	router.Use(middleware.RealIP, middleware.Logger, middleware.Recoverer, _middleware.Gzip)
+
 	memStorage, err := storage.NewMemStorage(ctx, service.logger, service.settings.PersistSettings)
 	if err != nil {
 		return fmt.Errorf("failed to create storage: %w", err)
@@ -41,15 +45,15 @@ func (service *Service) Start(ctx context.Context) error {
 
 	pgStorage.Ping()
 
-	metricsHandler := handler.NewMetricsHandler(
+	metric.NewHandler(
+		router,
 		memStorage,
 		pgStorage,
 		service.settings.HmacKey,
 		service.logger,
 	)
-	r := handler.NewRouter(metricsHandler, middleware.RealIP, middleware.Logger, middleware.Recoverer, _middleware.Gzip)
 
-	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: r}
+	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: router}
 
 	errChan := make(chan error)
 	go func(ch chan error) {
