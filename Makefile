@@ -1,5 +1,10 @@
 .PHONY: all
-all: clean build test
+all: clean mock_gen build test
+
+.PHONY: mock_gen
+mock_gen:
+	@echo "\n### $@"
+	@mockgen -destination=internal/server/mocks/mock_storage.go -package=mocks github.com/devldavydov/promytheus/internal/server/storage Storage
 
 .PHONY: build
 build: build_agent build_server
@@ -72,6 +77,27 @@ test_devops: build
 	 -server-port=$${SERVER_PORT} \
 	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
 	 -file-storage-path=$${TEMP_FILE}
+	@export SERVER_PORT=11111 && \
+	 export ADDRESS="localhost:$${SERVER_PORT}" && \
+	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+	 ./devopstest -test.v -test.run=^TestIteration9$$ \
+	 -source-path=. \
+	 -agent-binary-path=cmd/agent/agent \
+	 -binary-path=cmd/server/server \
+	 -server-port=$${SERVER_PORT} \
+	 -file-storage-path=$${TEMP_FILE} \
+	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
+	 -key=praktikum_devops_test
+	@export SERVER_PORT=11111 && \
+	 export ADDRESS="localhost:$${SERVER_PORT}" && \
+	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+	 ./devopstest -test.v -test.run=^TestIteration10[b]*$$ \
+	 -source-path=. \
+	 -agent-binary-path=cmd/agent/agent \
+	 -binary-path=cmd/server/server \
+	 -server-port=$${SERVER_PORT} \
+	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
+	 -key=praktikum_devops_test
 
 .PHONY: clean
 clean:

@@ -139,6 +139,11 @@ func TestSyncIntervalPersistAndRestore(t *testing.T) {
 	assert.Equal(t, metric.Gauge(4.9), gVal)
 }
 
+func TestPing(t *testing.T) {
+	storage := createMemStorageWithoutPersist()
+	assert.True(t, storage.Ping())
+}
+
 func createMemStorageWithoutPersist() *MemStorage {
 	logger := logrus.New()
 	storage, _ := NewMemStorage(context.TODO(), logger, NewPersistSettings(0, "", false))

@@ -17,4 +17,6 @@ type Storage interface {
 	SetAndGetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error)
 	GetCounterMetric(metricName string) (metric.Counter, error)
 	GetAllMetrics() ([]StorageItem, error)
+	Ping() bool
+	Close()
 }
