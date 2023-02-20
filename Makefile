@@ -1,6 +1,17 @@
 .PHONY: all
 all: clean mock_gen build test
 
+.PHONY: prepare_env
+prepare_env:
+	@echo "\n### $@"
+	@go install github.com/golang/mock/mockgen@v1.6.0
+	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.7.11/devopstest -O ./devopstest
+	@chmod u+x ./devopstest
+	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.7.11/statictest -O ./statictest
+	@chmod u+x ./statictest
+	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.7.11/random -O ./random
+	@chmod u+x ./random
+
 .PHONY: mock_gen
 mock_gen:
 	@echo "\n### $@"
@@ -40,16 +51,16 @@ test_devops: build
 	@./devopstest -test.v -test.run=^TestIteration2[b]*$$ -source-path=. -binary-path=cmd/server/server
 	@./devopstest -test.v -test.run=^TestIteration3[b]*$$ -source-path=. -binary-path=cmd/server/server
 	@./devopstest -test.v -test.run=^TestIteration4$$ -source-path=. -binary-path=cmd/server/server -agent-binary-path=cmd/agent/agent
-	@export SERVER_PORT=11111 && \
+	@export SERVER_PORT=$$(./random unused-port) && \
 	 export ADDRESS="localhost:$${SERVER_PORT}" && \
 	 ./devopstest -test.v -test.run=^TestIteration5$$ \
 	 -source-path=. \
 	 -agent-binary-path=cmd/agent/agent \
 	 -binary-path=cmd/server/server \
 	 -server-port=$${SERVER_PORT} 
-	@export SERVER_PORT=11111 && \
+	@export SERVER_PORT=$$(./random unused-port) && \
 	 export ADDRESS="localhost:$${SERVER_PORT}" && \
-	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+	 export TEMP_FILE=$$(./random tempfile) && \
      ./devopstest -test.v -test.run=^TestIteration6$$ \
 	 -source-path=. \
 	 -agent-binary-path=cmd/agent/agent \
@@ -57,9 +68,9 @@ test_devops: build
 	 -server-port=$${SERVER_PORT} \
 	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
 	 -file-storage-path=$${TEMP_FILE}
-	@export SERVER_PORT=11111 && \
+	@export SERVER_PORT=$$(./random unused-port) && \
 	 export ADDRESS="localhost:$${SERVER_PORT}" && \
-	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+	 export TEMP_FILE=$$(./random tempfile) && \
 	 ./devopstest -test.v -test.run=^TestIteration7$$ \
 	 -source-path=. \
 	 -agent-binary-path=cmd/agent/agent \
@@ -67,9 +78,9 @@ test_devops: build
 	 -server-port=$${SERVER_PORT} \
      -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
 	 -file-storage-path=$${TEMP_FILE}
-	@export SERVER_PORT=11111 && \
+	@export SERVER_PORT=$$(./random unused-port) && \
 	 export ADDRESS="localhost:$${SERVER_PORT}" && \
-	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+	 export TEMP_FILE=$$(./random tempfile) && \
 	 ./devopstest -test.v -test.run=^TestIteration8 \
 	 -source-path=. \
 	 -agent-binary-path=cmd/agent/agent \
@@ -77,9 +88,9 @@ test_devops: build
 	 -server-port=$${SERVER_PORT} \
 	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
 	 -file-storage-path=$${TEMP_FILE}
-	@export SERVER_PORT=11111 && \
+	@export SERVER_PORT=$$(./random unused-port) && \
 	 export ADDRESS="localhost:$${SERVER_PORT}" && \
-	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+	 export TEMP_FILE=$$(./random tempfile) && \
 	 ./devopstest -test.v -test.run=^TestIteration9$$ \
 	 -source-path=. \
 	 -agent-binary-path=cmd/agent/agent \
@@ -87,17 +98,17 @@ test_devops: build
 	 -server-port=$${SERVER_PORT} \
 	 -file-storage-path=$${TEMP_FILE} \
 	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
-	 -key=praktikum_devops_test
-	@export SERVER_PORT=11111 && \
+	 -key="$${TEMP_FILE}"
+	@export SERVER_PORT=$$(./random unused-port) && \
 	 export ADDRESS="localhost:$${SERVER_PORT}" && \
-	 export TEMP_FILE=/tmp/praktikum_devops_test && \
+	 export TEMP_FILE=$$(./random tempfile) && \
 	 ./devopstest -test.v -test.run=^TestIteration10[b]*$$ \
 	 -source-path=. \
 	 -agent-binary-path=cmd/agent/agent \
 	 -binary-path=cmd/server/server \
 	 -server-port=$${SERVER_PORT} \
 	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
-	 -key=praktikum_devops_test
+	 -key="$${TEMP_FILE}"
 
 .PHONY: clean
 clean:
