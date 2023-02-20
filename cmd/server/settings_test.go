@@ -21,7 +21,7 @@ func TestServerSettingsAdaptDefault(t *testing.T) {
 	assert.Nil(t, serverSettings.HmacKey)
 	assert.Equal(t, 300*time.Second, serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
-	assert.Equal(t, "postgresql.:5432", serverSettings.DatabaseDsn)
+	assert.Equal(t, "", serverSettings.DatabaseDsn)
 	assert.True(t, serverSettings.PersistSettings.Restore)
 }
 
@@ -114,7 +114,7 @@ func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	assert.Equal(t, 1*time.Second, serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
 	assert.True(t, serverSettings.PersistSettings.Restore)
-	assert.Equal(t, "postgresql.:5432", serverSettings.DatabaseDsn)
+	assert.Equal(t, "", serverSettings.DatabaseDsn)
 }
 
 func TestServerSettingsAdaptCustomError(t *testing.T) {

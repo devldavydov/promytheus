@@ -7,7 +7,7 @@ import (
 )
 
 func (handler *MetricHandler) Ping(rw http.ResponseWriter, req *http.Request) {
-	if handler.dbstorage.Ping() {
+	if handler.storage.Ping() {
 		_http.CreateStatusResponse(rw, http.StatusOK)
 		return
 	}

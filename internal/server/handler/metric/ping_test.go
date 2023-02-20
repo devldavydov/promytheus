@@ -33,6 +33,7 @@ func TestPing(t *testing.T) {
 				body:        http.StatusText(http.StatusOK),
 				contentType: _http.ContentTypeTextPlain,
 			},
+			dbStg: true,
 			stgMockFunc: func(ms *mocks.MockStorage) {
 				ms.EXPECT().Ping().Return(true)
 			},
@@ -48,6 +49,7 @@ func TestPing(t *testing.T) {
 				body:        http.StatusText(http.StatusInternalServerError),
 				contentType: _http.ContentTypeTextPlain,
 			},
+			dbStg: true,
 			stgMockFunc: func(ms *mocks.MockStorage) {
 				ms.EXPECT().Ping().Return(false)
 			},

@@ -18,14 +18,13 @@ var (
 )
 
 type MetricHandler struct {
-	storage   storage.Storage
-	dbstorage storage.Storage
-	hmacKey   *string
-	logger    *logrus.Logger
+	storage storage.Storage
+	hmacKey *string
+	logger  *logrus.Logger
 }
 
-func NewHandler(router chi.Router, storage storage.Storage, dbstorage storage.Storage, hmacKey *string, logger *logrus.Logger) *MetricHandler {
-	handler := &MetricHandler{storage: storage, dbstorage: dbstorage, hmacKey: hmacKey, logger: logger}
+func NewHandler(router chi.Router, storage storage.Storage, hmacKey *string, logger *logrus.Logger) *MetricHandler {
+	handler := &MetricHandler{storage: storage, hmacKey: hmacKey, logger: logger}
 
 	router.Post("/update/{metricType}/{metricName}/{metricValue}", handler.UpdateMetric)
 	router.Post("/update/", handler.UpdateMetricJSON)

@@ -20,7 +20,7 @@ const (
 	_defaultConfigStoreFile     = "/tmp/devops-metrics-db.json"
 	_defaultConfigRestore       = true
 	_defaultHmacKey             = ""
-	_defaultDatabaseDsn         = "postgresql.:5432"
+	_defaultDatabaseDsn         = ""
 )
 
 type Config struct {

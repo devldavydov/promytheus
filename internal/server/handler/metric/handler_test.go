@@ -42,6 +42,7 @@ type testItem struct {
 	xfail       bool
 	req         testRequest
 	resp        testResponse
+	dbStg       bool
 	stgInitFunc func(storage.Storage)
 	stgMockFunc func(*mocks.MockStorage)
 }
@@ -57,20 +58,26 @@ func runTests(t *testing.T, tests []testItem) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			stg, _ := storage.NewMemStorage(context.TODO(), logger, storage.NewPersistSettings(0, "", false))
-			if tt.stgInitFunc != nil {
-				tt.stgInitFunc(stg)
-			}
+			var stg storage.Storage
 
-			pgstg := mocks.NewMockStorage(ctrl)
-			if tt.stgMockFunc != nil {
-				tt.stgMockFunc(pgstg)
+			if tt.dbStg {
+				pgStg := mocks.NewMockStorage(ctrl)
+				if tt.stgMockFunc != nil {
+					tt.stgMockFunc(pgStg)
+				}
+				stg = pgStg
+			} else {
+				memStg, _ := storage.NewMemStorage(context.TODO(), logger, storage.NewPersistSettings(0, "", false))
+				if tt.stgInitFunc != nil {
+					tt.stgInitFunc(memStg)
+				}
+				stg = memStg
 			}
 
 			router := chi.NewRouter()
 			router.Use(middleware.Gzip)
 
-			NewHandler(router, stg, pgstg, tt.req.hmacKey, logger)
+			NewHandler(router, stg, tt.req.hmacKey, logger)
 			ts := httptest.NewServer(router)
 			defer ts.Close()
 

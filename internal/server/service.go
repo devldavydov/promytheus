@@ -32,23 +32,23 @@ func (service *Service) Start(ctx context.Context) error {
 	router := chi.NewRouter()
 	router.Use(middleware.RealIP, middleware.Logger, middleware.Recoverer, _middleware.Gzip)
 
-	memStorage, err := storage.NewMemStorage(ctx, service.logger, service.settings.PersistSettings)
+	var stg storage.Storage
+	var err error
+
+	if service.settings.DatabaseDsn == "" {
+		stg, err = storage.NewMemStorage(ctx, service.logger, service.settings.PersistSettings)
+	} else {
+		stg, err = storage.NewPgStorage(service.settings.DatabaseDsn, service.logger)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to create storage: %w", err)
 	}
-
-	pgStorage, err := storage.NewPgStorage(service.settings.DatabaseDsn, service.logger)
-	if err != nil {
-		return fmt.Errorf("failed to create storage: %w", err)
-	}
-	defer pgStorage.Close()
-
-	pgStorage.Ping()
+	defer stg.Close()
 
 	metric.NewHandler(
 		router,
-		memStorage,
-		pgStorage,
+		stg,
 		service.settings.HmacKey,
 		service.logger,
 	)

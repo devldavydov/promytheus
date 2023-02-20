@@ -30,8 +30,7 @@ func NewMemStorage(ctx context.Context, logger *logrus.Logger, persistSettings P
 		counterStorage:  make(map[string]metric.Counter),
 		logger:          logger}
 
-	err := memStorage.init(ctx)
-	if err != nil {
+	if err := memStorage.init(ctx); err != nil {
 		return nil, err
 	}
 	return memStorage, nil
