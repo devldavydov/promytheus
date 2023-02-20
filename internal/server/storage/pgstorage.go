@@ -9,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const _databasePingTimeout = 1 * time.Second
+const _databaseRequestTimeout = 5 * time.Second
 
 type PgStorage struct {
 	db     *sql.DB
@@ -21,7 +21,14 @@ func NewPgStorage(pgConnString string, logger *logrus.Logger) (*PgStorage, error
 	if err != nil {
 		return nil, err
 	}
-	return &PgStorage{db: db, logger: logger}, nil
+
+	pgstorage := &PgStorage{db: db, logger: logger}
+
+	if err = pgstorage.init(); err != nil {
+		return nil, err
+	}
+
+	return pgstorage, nil
 }
 
 var _ Storage = (*PgStorage)(nil)
@@ -55,7 +62,7 @@ func (pgstorage *PgStorage) GetAllMetrics() ([]StorageItem, error) {
 }
 
 func (pgstorage *PgStorage) Ping() bool {
-	ctx, cancel := context.WithTimeout(context.Background(), _databasePingTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
 	defer cancel()
 
 	if err := pgstorage.db.PingContext(ctx); err != nil {
@@ -75,4 +82,23 @@ func (pgstorage *PgStorage) Close() {
 	if err != nil {
 		pgstorage.logger.Errorf("Database conn close err: %v", err)
 	}
+}
+
+func (pgstorage *PgStorage) init() error {
+	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
+	defer cancel()
+
+	_, err := pgstorage.db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS metric (
+			id    text NOT NULL,
+			mtype text NOT NULL,
+			delta bigint,
+			value double precision
+		);
+	`)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
