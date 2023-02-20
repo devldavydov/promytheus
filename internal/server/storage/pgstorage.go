@@ -16,6 +16,13 @@ type PgStorage struct {
 	logger *logrus.Logger
 }
 
+type tableRow struct {
+	id    string
+	mtype string
+	delta sql.NullInt64
+	value sql.NullFloat64
+}
+
 func NewPgStorage(pgConnString string, logger *logrus.Logger) (*PgStorage, error) {
 	db, err := sql.Open("postgres", pgConnString)
 	if err != nil {
@@ -58,7 +65,45 @@ func (pgstorage *PgStorage) GetCounterMetric(metricName string) (metric.Counter,
 }
 
 func (pgstorage *PgStorage) GetAllMetrics() ([]StorageItem, error) {
-	return nil, nil
+	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
+	defer cancel()
+
+	var items []StorageItem
+
+	rows, err := pgstorage.db.QueryContext(ctx, `
+		SELECT id, mtype, delta, value
+		FROM metric
+		ORDER BY mtype, id
+	`)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var r tableRow
+		err = rows.Scan(&r.id, &r.mtype, &r.delta, &r.value)
+		if err != nil {
+			return nil, err
+		}
+
+		item := StorageItem{MetricName: r.id}
+
+		if r.mtype == metric.CounterTypeName {
+			item.Value = metric.Counter(r.delta.Int64)
+		} else if r.mtype == metric.GaugeTypeName {
+			item.Value = metric.Gauge(r.value.Float64)
+		}
+
+		items = append(items, item)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
 }
 
 func (pgstorage *PgStorage) Ping() bool {
@@ -93,7 +138,11 @@ func (pgstorage *PgStorage) init() error {
 			id    text NOT NULL,
 			mtype text NOT NULL,
 			delta bigint,
-			value double precision
+			value double precision,
+			
+			PRIMARY KEY (id, mtype),
+			CHECK(mtype IN ('counter', 'gauge')),
+			CHECK(mtype = 'counter' AND delta IS NOT NULL OR mtype = 'gauge' AND value IS NOT NULL)
 		);
 	`)
 	if err != nil {
