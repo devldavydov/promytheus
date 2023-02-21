@@ -41,7 +41,25 @@ func NewPgStorage(pgConnString string, logger *logrus.Logger) (*PgStorage, error
 var _ Storage = (*PgStorage)(nil)
 
 func (pgstorage *PgStorage) SetGaugeMetric(metricName string, value metric.Gauge) (metric.Gauge, error) {
-	return 0, nil
+	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
+	defer cancel()
+
+	var val metric.Gauge
+	err := pgstorage.db.QueryRowContext(
+		ctx,
+		`INSERT INTO metric (id, mtype, value)
+		 VALUES ($1, $2, $3)
+		 ON CONFLICT (id, mtype) DO UPDATE
+		 SET value = $3
+		 RETURNING value
+		`,
+		metricName, metric.GaugeTypeName, value).Scan(&val)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
 }
 
 func (pgstorage *PgStorage) GetGaugeMetric(metricName string) (metric.Gauge, error) {
@@ -49,7 +67,12 @@ func (pgstorage *PgStorage) GetGaugeMetric(metricName string) (metric.Gauge, err
 	defer cancel()
 
 	var val metric.Gauge
-	err := pgstorage.db.QueryRowContext(ctx, "SELECT value FROM metric WHERE id=$1", metricName).Scan(&val)
+	err := pgstorage.db.QueryRowContext(
+		ctx,
+		`SELECT value FROM metric
+		 WHERE id=$1 AND mtype=$2
+		`,
+		metricName, metric.GaugeTypeName).Scan(&val)
 
 	switch {
 	case err == sql.ErrNoRows:
@@ -62,7 +85,25 @@ func (pgstorage *PgStorage) GetGaugeMetric(metricName string) (metric.Gauge, err
 }
 
 func (pgstorage *PgStorage) SetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error) {
-	return 0, nil
+	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
+	defer cancel()
+
+	var val metric.Counter
+	err := pgstorage.db.QueryRowContext(
+		ctx,
+		`INSERT INTO metric (id, mtype, delta)
+		 VALUES ($1, $2, $3)
+		 ON CONFLICT (id, mtype) DO UPDATE
+		 SET delta = metric.delta + $3
+		 RETURNING delta
+		`,
+		metricName, metric.CounterTypeName, value).Scan(&val)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
 }
 
 func (pgstorage *PgStorage) GetCounterMetric(metricName string) (metric.Counter, error) {
@@ -70,7 +111,12 @@ func (pgstorage *PgStorage) GetCounterMetric(metricName string) (metric.Counter,
 	defer cancel()
 
 	var val metric.Counter
-	err := pgstorage.db.QueryRowContext(ctx, "SELECT delta FROM metric WHERE id=$1", metricName).Scan(&val)
+	err := pgstorage.db.QueryRowContext(
+		ctx,
+		`SELECT delta FROM metric
+		 WHERE id=$1 AND mtype=$2
+		`,
+		metricName, metric.CounterTypeName).Scan(&val)
 
 	switch {
 	case err == sql.ErrNoRows:
