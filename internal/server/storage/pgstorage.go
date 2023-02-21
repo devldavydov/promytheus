@@ -45,7 +45,20 @@ func (pgstorage *PgStorage) SetGaugeMetric(metricName string, value metric.Gauge
 }
 
 func (pgstorage *PgStorage) GetGaugeMetric(metricName string) (metric.Gauge, error) {
-	return 0, nil
+	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
+	defer cancel()
+
+	var val metric.Gauge
+	err := pgstorage.db.QueryRowContext(ctx, "SELECT value FROM metric WHERE id=$1", metricName).Scan(&val)
+
+	switch {
+	case err == sql.ErrNoRows:
+		return 0, ErrMetricNotFound
+	case err != nil:
+		return 0, err
+	}
+
+	return val, nil
 }
 
 func (pgstorage *PgStorage) SetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error) {
@@ -53,7 +66,20 @@ func (pgstorage *PgStorage) SetCounterMetric(metricName string, value metric.Cou
 }
 
 func (pgstorage *PgStorage) GetCounterMetric(metricName string) (metric.Counter, error) {
-	return 0, nil
+	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
+	defer cancel()
+
+	var val metric.Counter
+	err := pgstorage.db.QueryRowContext(ctx, "SELECT delta FROM metric WHERE id=$1", metricName).Scan(&val)
+
+	switch {
+	case err == sql.ErrNoRows:
+		return 0, ErrMetricNotFound
+	case err != nil:
+		return 0, err
+	}
+
+	return val, nil
 }
 
 func (pgstorage *PgStorage) GetAllMetrics() ([]StorageItem, error) {
