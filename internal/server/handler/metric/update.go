@@ -18,9 +18,9 @@ func (handler *MetricHandler) UpdateMetric(rw http.ResponseWriter, req *http.Req
 	}
 
 	if metric.GaugeTypeName == params.metricType {
-		err = handler.storage.SetGaugeMetric(params.metricName, params.gaugeValue)
+		_, err = handler.storage.SetGaugeMetric(params.metricName, params.gaugeValue)
 	} else if metric.CounterTypeName == params.metricType {
-		err = handler.storage.SetCounterMetric(params.metricName, params.counterValue)
+		_, err = handler.storage.SetCounterMetric(params.metricName, params.counterValue)
 	}
 
 	if err != nil {
@@ -52,9 +52,9 @@ func (handler *MetricHandler) UpdateMetricJSON(rw http.ResponseWriter, req *http
 	var val interface{}
 
 	if metric.GaugeTypeName == params.metricType {
-		val, err = handler.storage.SetAndGetGaugeMetric(params.metricName, params.gaugeValue)
+		val, err = handler.storage.SetGaugeMetric(params.metricName, params.gaugeValue)
 	} else if metric.CounterTypeName == params.metricType {
-		val, err = handler.storage.SetAndGetCounterMetric(params.metricName, params.counterValue)
+		val, err = handler.storage.SetCounterMetric(params.metricName, params.counterValue)
 	}
 
 	if err != nil {

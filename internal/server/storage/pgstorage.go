@@ -40,11 +40,7 @@ func NewPgStorage(pgConnString string, logger *logrus.Logger) (*PgStorage, error
 
 var _ Storage = (*PgStorage)(nil)
 
-func (pgstorage *PgStorage) SetGaugeMetric(metricName string, value metric.Gauge) error {
-	return nil
-}
-
-func (pgstorage *PgStorage) SetAndGetGaugeMetric(metricName string, value metric.Gauge) (metric.Gauge, error) {
+func (pgstorage *PgStorage) SetGaugeMetric(metricName string, value metric.Gauge) (metric.Gauge, error) {
 	return 0, nil
 }
 
@@ -52,11 +48,7 @@ func (pgstorage *PgStorage) GetGaugeMetric(metricName string) (metric.Gauge, err
 	return 0, nil
 }
 
-func (pgstorage *PgStorage) SetCounterMetric(metricName string, value metric.Counter) error {
-	return nil
-}
-
-func (pgstorage *PgStorage) SetAndGetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error) {
+func (pgstorage *PgStorage) SetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error) {
 	return 0, nil
 }
 

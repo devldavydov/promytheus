@@ -19,10 +19,6 @@ func TestGaugeSetAndGet(t *testing.T) {
 	res, err := storage.GetGaugeMetric("foo")
 	assert.NoError(t, err)
 	assert.Equal(t, val, res)
-
-	res, err = storage.SetAndGetGaugeMetric("bar", val)
-	assert.NoError(t, err)
-	assert.Equal(t, val, res)
 }
 
 func TestGaugeGetUnknown(t *testing.T) {
@@ -40,10 +36,6 @@ func TestCounterSetNewAndGet(t *testing.T) {
 	res, err := storage.GetCounterMetric("foo")
 	assert.NoError(t, err)
 	assert.Equal(t, val, res)
-
-	res, err = storage.SetAndGetCounterMetric("bar", val)
-	assert.NoError(t, err)
-	assert.Equal(t, val, res)
 }
 
 func TestCounterSetExistingAndGet(t *testing.T) {
@@ -55,7 +47,7 @@ func TestCounterSetExistingAndGet(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, metric.Counter(10), res)
 
-	res, err = storage.SetAndGetCounterMetric("foo", metric.Counter(5))
+	res, err = storage.SetCounterMetric("foo", metric.Counter(5))
 	assert.NoError(t, err)
 	assert.Equal(t, metric.Counter(15), res)
 }

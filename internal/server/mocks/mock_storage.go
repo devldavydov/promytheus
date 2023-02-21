@@ -106,42 +106,13 @@ func (mr *MockStorageMockRecorder) Ping() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Ping", reflect.TypeOf((*MockStorage)(nil).Ping))
 }
 
-// SetAndGetCounterMetric mocks base method.
-func (m *MockStorage) SetAndGetCounterMetric(arg0 string, arg1 metric.Counter) (metric.Counter, error) {
+// SetCounterMetric mocks base method.
+func (m *MockStorage) SetCounterMetric(arg0 string, arg1 metric.Counter) (metric.Counter, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetAndGetCounterMetric", arg0, arg1)
+	ret := m.ctrl.Call(m, "SetCounterMetric", arg0, arg1)
 	ret0, _ := ret[0].(metric.Counter)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
-}
-
-// SetAndGetCounterMetric indicates an expected call of SetAndGetCounterMetric.
-func (mr *MockStorageMockRecorder) SetAndGetCounterMetric(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAndGetCounterMetric", reflect.TypeOf((*MockStorage)(nil).SetAndGetCounterMetric), arg0, arg1)
-}
-
-// SetAndGetGaugeMetric mocks base method.
-func (m *MockStorage) SetAndGetGaugeMetric(arg0 string, arg1 metric.Gauge) (metric.Gauge, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetAndGetGaugeMetric", arg0, arg1)
-	ret0, _ := ret[0].(metric.Gauge)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// SetAndGetGaugeMetric indicates an expected call of SetAndGetGaugeMetric.
-func (mr *MockStorageMockRecorder) SetAndGetGaugeMetric(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAndGetGaugeMetric", reflect.TypeOf((*MockStorage)(nil).SetAndGetGaugeMetric), arg0, arg1)
-}
-
-// SetCounterMetric mocks base method.
-func (m *MockStorage) SetCounterMetric(arg0 string, arg1 metric.Counter) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetCounterMetric", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
 }
 
 // SetCounterMetric indicates an expected call of SetCounterMetric.
@@ -151,11 +122,12 @@ func (mr *MockStorageMockRecorder) SetCounterMetric(arg0, arg1 interface{}) *gom
 }
 
 // SetGaugeMetric mocks base method.
-func (m *MockStorage) SetGaugeMetric(arg0 string, arg1 metric.Gauge) error {
+func (m *MockStorage) SetGaugeMetric(arg0 string, arg1 metric.Gauge) (metric.Gauge, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetGaugeMetric", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(metric.Gauge)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SetGaugeMetric indicates an expected call of SetGaugeMetric.
