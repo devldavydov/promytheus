@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	_http "github.com/devldavydov/promytheus/internal/common/http"
+	"github.com/devldavydov/promytheus/internal/common/metric"
+	"github.com/devldavydov/promytheus/internal/server/mocks"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/devldavydov/promytheus/tests/data"
 )
@@ -90,6 +92,77 @@ func TestGetMetric(t *testing.T) {
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetGaugeMetric("metric1", 1.23456)
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
+func TestGetMetricFromDb(t *testing.T) {
+	tests := []testItem{
+		{
+			name: "get metric: counter",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/value/counter/metric1",
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        "123",
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetCounterMetric("metric1").Return(metric.Counter(123), nil)
+			},
+		},
+		{
+			name: "get metric: counter not found",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/value/counter/metric1",
+			},
+			resp: testResponse{
+				code:        http.StatusNotFound,
+				body:        http.StatusText(http.StatusNotFound),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetCounterMetric("metric1").Return(metric.Counter(0), storage.ErrMetricNotFound)
+			},
+		},
+		{
+			name: "get metric: gauge",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/value/gauge/metric1",
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        "1.230",
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetGaugeMetric("metric1").Return(metric.Gauge(1.230), nil)
+			},
+		},
+		{
+			name: "get metric: gauge not found",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/value/gauge/metric1",
+			},
+			resp: testResponse{
+				code:        http.StatusNotFound,
+				body:        http.StatusText(http.StatusNotFound),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetGaugeMetric("metric1").Return(metric.Gauge(0), storage.ErrMetricNotFound)
 			},
 		},
 	}
@@ -198,6 +271,85 @@ func TestGetJSONMetric(t *testing.T) {
 	runTests(t, tests)
 }
 
+func TestGetJSONMetricFromDb(t *testing.T) {
+	tests := []testItem{
+		{
+			name: "get JSON metric: gauge",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"gauge","value":1.23}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetGaugeMetric("foo").Return(metric.Gauge(1.230), nil)
+			},
+		},
+		{
+			name: "get JSON metric: gauge not found",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusNotFound,
+				body:        http.StatusText(http.StatusNotFound),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetGaugeMetric("foo").Return(metric.Gauge(0), storage.ErrMetricNotFound)
+			},
+		},
+		{
+			name: "get JSON metric: counter",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        bodyStringReader(`{"id": "foo", "type": "counter"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"counter","delta":123}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetCounterMetric("foo").Return(metric.Counter(123), nil)
+			},
+		},
+		{
+			name: "get JSON metric: counter not found",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        bodyStringReader(`{"id": "foo", "type": "counter"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusNotFound,
+				body:        http.StatusText(http.StatusNotFound),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetCounterMetric("foo").Return(metric.Counter(0), storage.ErrMetricNotFound)
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
 func TestGetJSONMetricWithHash(t *testing.T) {
 	tests := []testItem{
 		{
@@ -234,6 +386,51 @@ func TestGetJSONMetricWithHash(t *testing.T) {
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("PollCount", 5)
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
+func TestGetJSONMetricWithHashFromDb(t *testing.T) {
+	tests := []testItem{
+		{
+			name: "get JSON metric with hash: gauge",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        bodyStringReader(`{"id":"Sys", "type":"gauge"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				hmacKey:     strPointer("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetGaugeMetric("Sys").Return(metric.Gauge(13220880), nil)
+			},
+		},
+		{
+			name: "get JSON metric with hash: counter",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        bodyStringReader(`{"id":"PollCount", "type":"counter"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				hmacKey:     strPointer("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetCounterMetric("PollCount").Return(metric.Counter(5), nil)
 			},
 		},
 	}
@@ -298,6 +495,34 @@ func TestGetAllMetricsPage(t *testing.T) {
 				s.SetCounterMetric("aaa", 1)
 				s.SetCounterMetric("aaa", 1)
 				s.SetCounterMetric("zzz", 3)
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
+func TestGetAllMetricsPageFromDb(t *testing.T) {
+	tests := []testItem{
+		{
+			name: "get all metrics page: with data",
+			req: testRequest{
+				method: http.MethodGet,
+				url:    "/",
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        data.AllMetricsResponseWithData,
+				contentType: _http.ContentTypeHTML,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().GetAllMetrics().Return([]storage.StorageItem{
+					{MetricName: "aaa", Value: metric.Counter(2)},
+					{MetricName: "zzz", Value: metric.Counter(3)},
+					{MetricName: "bar", Value: metric.Gauge(1.235)},
+					{MetricName: "foo", Value: metric.Gauge(1.235)},
+				}, nil)
 			},
 		},
 	}
