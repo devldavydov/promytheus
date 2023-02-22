@@ -1,10 +1,13 @@
 package metric
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 
 	_http "github.com/devldavydov/promytheus/internal/common/http"
+	"github.com/devldavydov/promytheus/internal/common/metric"
+	"github.com/devldavydov/promytheus/internal/server/mocks"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 )
 
@@ -140,6 +143,77 @@ func TestUpdateMetric(t *testing.T) {
 				code:        http.StatusOK,
 				body:        http.StatusText(http.StatusOK),
 				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
+func TestUpdateMetricInDb(t *testing.T) {
+	tests := []testItem{
+		{
+			name: "update metric: gauge",
+			req: testRequest{
+				method: http.MethodPost,
+				url:    "/update/gauge/metric1/1.234",
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        http.StatusText(http.StatusOK),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetGaugeMetric("metric1", metric.Gauge(1.234)).Return(metric.Gauge(1.234), nil)
+			},
+		},
+		{
+			name: "update metric: gauge db err",
+			req: testRequest{
+				method: http.MethodPost,
+				url:    "/update/gauge/metric1/1.234",
+			},
+			resp: testResponse{
+				code:        http.StatusInternalServerError,
+				body:        http.StatusText(http.StatusInternalServerError),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetGaugeMetric("metric1", metric.Gauge(1.234)).Return(metric.Gauge(0), errors.New("db error"))
+			},
+		},
+		{
+			name: "update metric: counter",
+			req: testRequest{
+				method: http.MethodPost,
+				url:    "/update/counter/metric1/1234",
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        http.StatusText(http.StatusOK),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetCounterMetric("metric1", metric.Counter(1234)).Return(metric.Counter(1234), nil)
+			},
+		},
+		{
+			name: "update metric: counter db err",
+			req: testRequest{
+				method: http.MethodPost,
+				url:    "/update/counter/metric1/1234",
+			},
+			resp: testResponse{
+				code:        http.StatusInternalServerError,
+				body:        http.StatusText(http.StatusInternalServerError),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetCounterMetric("metric1", metric.Counter(1234)).Return(metric.Counter(0), errors.New("db error"))
 			},
 		},
 	}
@@ -330,6 +404,85 @@ func TestUpdateJsonMetric(t *testing.T) {
 	runTests(t, tests)
 }
 
+func TestUpdateJsonMetricInDb(t *testing.T) {
+	tests := []testItem{
+		{
+			name: "update JSON metric: gauge",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge", "value": 123.0}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"gauge","value":123}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetGaugeMetric("foo", metric.Gauge(123.0)).Return(metric.Gauge(123.0), nil)
+			},
+		},
+		{
+			name: "update JSON metric: gauge db err",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id": "foo", "type": "gauge", "value": 123.0}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusInternalServerError,
+				body:        http.StatusText(http.StatusInternalServerError),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetGaugeMetric("foo", metric.Gauge(123.0)).Return(metric.Gauge(0), errors.New("db error"))
+			},
+		},
+		{
+			name: "update JSON metric: counter",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id": "foo", "type": "counter", "delta": 123}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo","type":"counter","delta":123}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetCounterMetric("foo", metric.Counter(123)).Return(metric.Counter(123), nil)
+			},
+		},
+		{
+			name: "update JSON metric: counter db err",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id": "foo", "type": "counter", "delta": 123}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusInternalServerError,
+				body:        http.StatusText(http.StatusInternalServerError),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetCounterMetric("foo", metric.Counter(123)).Return(metric.Counter(0), errors.New("db error"))
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
 func TestUpdateJSONMetricWithHash(t *testing.T) {
 	tests := []testItem{
 		{
@@ -390,6 +543,89 @@ func TestUpdateJSONMetricWithHash(t *testing.T) {
 				code:        http.StatusBadRequest,
 				body:        http.StatusText(http.StatusBadRequest),
 				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+	}
+
+	runTests(t, tests)
+}
+
+func TestUpdateJSONMetricInDbWithHash(t *testing.T) {
+	tests := []testItem{
+		{
+			name: "update JSON metric with valid hash: gauge",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				hmacKey:     strPointer("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetGaugeMetric("Sys", metric.Gauge(13220880)).Return(metric.Gauge(13220880), nil)
+			},
+		},
+		{
+			name: "update JSON metric with valid hash: gauge db err",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				hmacKey:     strPointer("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusInternalServerError,
+				body:        http.StatusText(http.StatusInternalServerError),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetGaugeMetric("Sys", metric.Gauge(13220880)).Return(metric.Gauge(0), errors.New("db error"))
+			},
+		},
+		{
+			name: "update JSON metric with valid hash: counter",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				hmacKey:     strPointer("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}` + "\n",
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetCounterMetric("PollCount", metric.Counter(5)).Return(metric.Counter(5), nil)
+			},
+		},
+		{
+			name: "update JSON metric with valid hash: counter db error",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(`{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				hmacKey:     strPointer("foobar"),
+			},
+			resp: testResponse{
+				code:        http.StatusInternalServerError,
+				body:        http.StatusText(http.StatusInternalServerError),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			dbStg: true,
+			stgMockFunc: func(ms *mocks.MockStorage) {
+				ms.EXPECT().SetCounterMetric("PollCount", metric.Counter(5)).Return(metric.Counter(5), errors.New("db error"))
 			},
 		},
 	}
