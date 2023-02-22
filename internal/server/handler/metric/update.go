@@ -6,6 +6,7 @@ import (
 
 	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/common/metric"
+	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -29,7 +30,7 @@ func (handler *MetricHandler) UpdateMetric(rw http.ResponseWriter, req *http.Req
 		return
 	}
 
-	_http.CreateResponse(rw, _http.ContentTypeTextPlain, http.StatusOK, http.StatusText(http.StatusOK))
+	_http.CreateStatusResponse(rw, http.StatusOK)
 }
 
 func (handler *MetricHandler) UpdateMetricJSON(rw http.ResponseWriter, req *http.Request) {
@@ -75,4 +76,41 @@ func (handler *MetricHandler) UpdateMetricJSON(rw http.ResponseWriter, req *http
 	}
 
 	_http.CreateJSONResponse(rw, http.StatusOK, metricResp)
+}
+
+func (handler *MetricHandler) UpdateMetricJSONBatch(rw http.ResponseWriter, req *http.Request) {
+	var metricReqList []metric.MetricsDTO
+
+	err := json.NewDecoder(req.Body).Decode(&metricReqList)
+	if err != nil {
+		_http.CreateStatusResponse(rw, http.StatusBadRequest)
+		return
+	}
+
+	paramsList, err := handler.parseUpdateRequestJSONBatch(metricReqList)
+	if err != nil {
+		handler.logger.Errorf("Incorrect update metric request [%s], JSON: [%v] , err: %v", req.URL, metricReqList, err)
+		CreateResponseOnRequestError(rw, err)
+		return
+	}
+
+	storageItemList := make([]storage.StorageItem, 0, len(paramsList))
+	for _, params := range paramsList {
+		stgItem := storage.StorageItem{MetricName: params.metricName}
+		if params.metricType == metric.CounterTypeName {
+			stgItem.Value = params.counterValue
+		} else if params.metricType == metric.GaugeTypeName {
+			stgItem.Value = params.gaugeValue
+		}
+
+		storageItemList = append(storageItemList, stgItem)
+	}
+
+	if err = handler.storage.SetMetrics(storageItemList); err != nil {
+		handler.logger.Errorf("Update metric error on request [%s], JSON: [%v], err: %v", req.URL, metricReqList, err)
+		_http.CreateStatusResponse(rw, http.StatusInternalServerError)
+		return
+	}
+
+	_http.CreateStatusResponse(rw, http.StatusOK)
 }

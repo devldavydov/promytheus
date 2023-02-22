@@ -78,6 +78,22 @@ func (storage *MemStorage) GetCounterMetric(metricName string) (metric.Counter, 
 	return val, nil
 }
 
+func (storage *MemStorage) SetMetrics(metricList []StorageItem) error {
+	storage.mu.Lock()
+	defer storage.mu.Unlock()
+
+	for _, metricItem := range metricList {
+		if metricItem.Value.TypeName() == metric.CounterTypeName {
+			storage.counterStorage[metricItem.MetricName] += metricItem.Value.(metric.Counter)
+		} else if metricItem.Value.TypeName() == metric.GaugeTypeName {
+			storage.gaugeStorage[metricItem.MetricName] = metricItem.Value.(metric.Gauge)
+		}
+	}
+	storage.trySyncPersist()
+
+	return nil
+}
+
 func (storage *MemStorage) GetAllMetrics() ([]StorageItem, error) {
 	storage.mu.RLock()
 	defer storage.mu.RUnlock()

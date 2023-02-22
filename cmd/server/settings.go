@@ -84,6 +84,8 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	//config.DatabaseDsn = "postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable"
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err

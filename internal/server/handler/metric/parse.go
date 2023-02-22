@@ -98,6 +98,20 @@ func (handler *MetricHandler) parseUpdateRequestJSON(metricReq metric.MetricsDTO
 	return nil, ErrUnknownMetricType
 }
 
+func (handler *MetricHandler) parseUpdateRequestJSONBatch(metricReqList []metric.MetricsDTO) ([]requestParams, error) {
+	requestParamsList := make([]requestParams, 0, len(metricReqList))
+
+	for _, metricReq := range metricReqList {
+		requestParams, err := handler.parseUpdateRequestJSON(metricReq)
+		if err != nil {
+			return nil, err
+		}
+		requestParamsList = append(requestParamsList, *requestParams)
+	}
+
+	return requestParamsList, nil
+}
+
 func (handler *MetricHandler) hmacCheck(metricReq metric.MetricsDTO, value metric.MetricValue) error {
 	if handler.hmacKey == nil {
 		return nil

@@ -28,6 +28,7 @@ func NewHandler(router chi.Router, storage storage.Storage, hmacKey *string, log
 
 	router.Post("/update/{metricType}/{metricName}/{metricValue}", handler.UpdateMetric)
 	router.Post("/update/", handler.UpdateMetricJSON)
+	router.Post("/updates/", handler.UpdateMetricJSONBatch)
 	router.Get("/value/{metricType}/{metricName}", handler.GetMetric)
 	router.Post("/value/", handler.GetMetricJSON)
 	router.Get("/", handler.GetMetrics)

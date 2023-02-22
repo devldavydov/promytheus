@@ -135,3 +135,17 @@ func (mr *MockStorageMockRecorder) SetGaugeMetric(arg0, arg1 interface{}) *gomoc
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetGaugeMetric", reflect.TypeOf((*MockStorage)(nil).SetGaugeMetric), arg0, arg1)
 }
+
+// SetMetrics mocks base method.
+func (m *MockStorage) SetMetrics(arg0 []storage.StorageItem) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetMetrics", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetMetrics indicates an expected call of SetMetrics.
+func (mr *MockStorageMockRecorder) SetMetrics(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetMetrics", reflect.TypeOf((*MockStorage)(nil).SetMetrics), arg0)
+}

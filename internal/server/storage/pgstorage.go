@@ -9,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const _databaseRequestTimeout = 5 * time.Second
+const _databaseRequestTimeout = 10 * time.Second
 
 type PgStorage struct {
 	db     *sql.DB
@@ -45,15 +45,7 @@ func (pgstorage *PgStorage) SetGaugeMetric(metricName string, value metric.Gauge
 	defer cancel()
 
 	var val metric.Gauge
-	err := pgstorage.db.QueryRowContext(
-		ctx,
-		`INSERT INTO metric (id, mtype, value)
-		 VALUES ($1, $2, $3)
-		 ON CONFLICT (id, mtype) DO UPDATE
-		 SET value = $3
-		 RETURNING value
-		`,
-		metricName, metric.GaugeTypeName, value).Scan(&val)
+	err := pgstorage.db.QueryRowContext(ctx, _sqlUpsertGauge, metricName, metric.GaugeTypeName, value).Scan(&val)
 
 	if err != nil {
 		return 0, err
@@ -67,12 +59,7 @@ func (pgstorage *PgStorage) GetGaugeMetric(metricName string) (metric.Gauge, err
 	defer cancel()
 
 	var val metric.Gauge
-	err := pgstorage.db.QueryRowContext(
-		ctx,
-		`SELECT value FROM metric
-		 WHERE id=$1 AND mtype=$2
-		`,
-		metricName, metric.GaugeTypeName).Scan(&val)
+	err := pgstorage.db.QueryRowContext(ctx, _sqlSelectGauge, metricName, metric.GaugeTypeName).Scan(&val)
 
 	switch {
 	case err == sql.ErrNoRows:
@@ -89,15 +76,7 @@ func (pgstorage *PgStorage) SetCounterMetric(metricName string, value metric.Cou
 	defer cancel()
 
 	var val metric.Counter
-	err := pgstorage.db.QueryRowContext(
-		ctx,
-		`INSERT INTO metric (id, mtype, delta)
-		 VALUES ($1, $2, $3)
-		 ON CONFLICT (id, mtype) DO UPDATE
-		 SET delta = metric.delta + $3
-		 RETURNING delta
-		`,
-		metricName, metric.CounterTypeName, value).Scan(&val)
+	err := pgstorage.db.QueryRowContext(ctx, _sqlUpsertCounter, metricName, metric.CounterTypeName, value).Scan(&val)
 
 	if err != nil {
 		return 0, err
@@ -111,12 +90,7 @@ func (pgstorage *PgStorage) GetCounterMetric(metricName string) (metric.Counter,
 	defer cancel()
 
 	var val metric.Counter
-	err := pgstorage.db.QueryRowContext(
-		ctx,
-		`SELECT delta FROM metric
-		 WHERE id=$1 AND mtype=$2
-		`,
-		metricName, metric.CounterTypeName).Scan(&val)
+	err := pgstorage.db.QueryRowContext(ctx, _sqlSelectCounter, metricName, metric.CounterTypeName).Scan(&val)
 
 	switch {
 	case err == sql.ErrNoRows:
@@ -126,6 +100,50 @@ func (pgstorage *PgStorage) GetCounterMetric(metricName string) (metric.Counter,
 	}
 
 	return val, nil
+}
+
+func (pgstorage *PgStorage) SetMetrics(metricList []StorageItem) error {
+	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
+	defer cancel()
+
+	tx, err := pgstorage.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmtCounter, err := tx.PrepareContext(ctx, _sqlUpsertCounter)
+	if err != nil {
+		return err
+	}
+	defer stmtCounter.Close()
+
+	stmtGauge, err := tx.PrepareContext(ctx, _sqlUpsertGauge)
+	if err != nil {
+		return err
+	}
+	defer stmtGauge.Close()
+
+	for _, metricItem := range metricList {
+
+		if metricItem.Value.TypeName() == metric.CounterTypeName {
+			_, err = stmtCounter.ExecContext(ctx,
+				metricItem.MetricName,
+				metric.CounterTypeName,
+				metricItem.Value.(metric.Counter))
+		} else if metricItem.Value.TypeName() == metric.GaugeTypeName {
+			_, err = stmtGauge.ExecContext(ctx,
+				metricItem.MetricName,
+				metric.GaugeTypeName,
+				metricItem.Value.(metric.Gauge))
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (pgstorage *PgStorage) GetAllMetrics() ([]StorageItem, error) {
@@ -197,18 +215,7 @@ func (pgstorage *PgStorage) init() error {
 	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
 	defer cancel()
 
-	_, err := pgstorage.db.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS metric (
-			id    text NOT NULL,
-			mtype text NOT NULL,
-			delta bigint,
-			value double precision,
-			
-			PRIMARY KEY (id, mtype),
-			CHECK(mtype IN ('counter', 'gauge')),
-			CHECK(mtype = 'counter' AND delta IS NOT NULL OR mtype = 'gauge' AND value IS NOT NULL)
-		);
-	`)
+	_, err := pgstorage.db.ExecContext(ctx, _sqlCreateTable)
 	if err != nil {
 		return err
 	}
