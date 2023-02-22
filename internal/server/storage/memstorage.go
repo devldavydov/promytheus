@@ -21,6 +21,8 @@ type MemStorage struct {
 	logger          *logrus.Logger
 }
 
+var _ Storage = (*MemStorage)(nil)
+
 func NewMemStorage(ctx context.Context, logger *logrus.Logger, persistSettings PersistSettings) (*MemStorage, error) {
 	memStorage := &MemStorage{
 		persistSettings: persistSettings,
@@ -28,24 +30,13 @@ func NewMemStorage(ctx context.Context, logger *logrus.Logger, persistSettings P
 		counterStorage:  make(map[string]metric.Counter),
 		logger:          logger}
 
-	err := memStorage.init(ctx)
-	if err != nil {
+	if err := memStorage.init(ctx); err != nil {
 		return nil, err
 	}
 	return memStorage, nil
 }
 
-func (storage *MemStorage) SetGaugeMetric(metricName string, value metric.Gauge) error {
-	storage.mu.Lock()
-	defer storage.mu.Unlock()
-
-	storage.gaugeStorage[metricName] = value
-	storage.trySyncPersist()
-
-	return nil
-}
-
-func (storage *MemStorage) SetAndGetGaugeMetric(metricName string, value metric.Gauge) (metric.Gauge, error) {
+func (storage *MemStorage) SetGaugeMetric(metricName string, value metric.Gauge) (metric.Gauge, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
@@ -66,17 +57,7 @@ func (storage *MemStorage) GetGaugeMetric(metricName string) (metric.Gauge, erro
 	return val, nil
 }
 
-func (storage *MemStorage) SetCounterMetric(metricName string, value metric.Counter) error {
-	storage.mu.Lock()
-	defer storage.mu.Unlock()
-
-	storage.counterStorage[metricName] += value
-	storage.trySyncPersist()
-
-	return nil
-}
-
-func (storage *MemStorage) SetAndGetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error) {
+func (storage *MemStorage) SetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
@@ -109,6 +90,12 @@ func (storage *MemStorage) GetAllMetrics() ([]StorageItem, error) {
 	return append(append(items, counterItems...), gaugeItems...), nil
 }
 
+func (storage *MemStorage) Ping() bool {
+	return true
+}
+
+func (storage *MemStorage) Close() {}
+
 func (storage *MemStorage) init(ctx context.Context) error {
 	if storage.persistSettings.ShouldRestore() {
 		err := storage.restore()
@@ -138,9 +125,9 @@ func (storage *MemStorage) restore() error {
 		if os.IsNotExist(err) {
 			storage.logger.Warnf("Restore file [%s] not exists, skipping...", storage.persistSettings.StoreFile)
 			return nil
-		} else {
-			return fmt.Errorf("restore open file [%s] err: %w", storage.persistSettings.StoreFile, err)
 		}
+
+		return fmt.Errorf("restore open file [%s] err: %w", storage.persistSettings.StoreFile, err)
 	}
 	defer file.Close()
 

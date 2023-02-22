@@ -12,6 +12,7 @@ import (
 
 type gzipReader struct {
 	io.ReadCloser
+
 	Reader io.Reader
 }
 
@@ -21,6 +22,7 @@ func (gr gzipReader) Read(p []byte) (n int, err error) {
 
 type gzipWriter struct {
 	http.ResponseWriter
+
 	gzWriter   io.Writer
 	statusCode int
 }
@@ -85,9 +87,10 @@ func Gzip(next http.Handler) http.Handler {
 			defer gz.Close()
 
 			next.ServeHTTP(newGzipWriter(w, gz), r)
-		} else {
-			next.ServeHTTP(w, r)
+			return
 		}
+
+		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
 }

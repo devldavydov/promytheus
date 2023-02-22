@@ -10,11 +10,11 @@ type StorageItem struct {
 }
 
 type Storage interface {
-	SetGaugeMetric(metricName string, value metric.Gauge) error
-	SetAndGetGaugeMetric(metricName string, value metric.Gauge) (metric.Gauge, error)
+	SetGaugeMetric(metricName string, value metric.Gauge) (metric.Gauge, error)
 	GetGaugeMetric(metricName string) (metric.Gauge, error)
-	SetCounterMetric(metricName string, value metric.Counter) error
-	SetAndGetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error)
+	SetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error)
 	GetCounterMetric(metricName string) (metric.Counter, error)
 	GetAllMetrics() ([]StorageItem, error)
+	Ping() bool
+	Close()
 }

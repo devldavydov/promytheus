@@ -6,6 +6,7 @@
 *.dylib
 devopstest
 statictest
+random
 
 # Test binary, built with `go test -c`
 *.test
