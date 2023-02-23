@@ -16,6 +16,7 @@ import (
 const (
 	_defaultConfigAddress       = "127.0.0.1:8080"
 	_defaultConfigLogLevel      = "DEBUG"
+	_defaultConfigLogFile       = "server.log"
 	_defaultconfigStoreInterval = 300 * time.Second
 	_defaultConfigStoreFile     = "/tmp/devops-metrics-db.json"
 	_defaultConfigRestore       = true
@@ -31,6 +32,7 @@ type Config struct {
 	HmacKey       string
 	DatabaseDsn   string
 	LogLevel      string
+	LogFile       string
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
@@ -84,9 +86,12 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
-	//config.DatabaseDsn = "postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable"
-
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	config.LogFile, err = env.GetVariable("LOG_FILE", env.CastString, _defaultConfigLogFile)
 	if err != nil {
 		return nil, err
 	}

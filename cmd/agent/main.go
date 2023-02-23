@@ -25,10 +25,11 @@ func run() error {
 		return fmt.Errorf("failed to load flag and ENV settings: %w", err)
 	}
 
-	logger, err := _log.NewLogger(config.LogLevel)
+	logger, closer, err := _log.NewLogger(config.LogLevel, config.LogFile)
 	if err != nil {
 		return fmt.Errorf("failed to create logger: %w", err)
 	}
+	defer closer.Close()
 
 	agentSettings, err := AgentSettingsAdapt(config)
 	if err != nil {

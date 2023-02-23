@@ -15,6 +15,7 @@ const (
 	_defaultConfigReportInterval = 10 * time.Second
 	_defaultConfigPollInterval   = 2 * time.Second
 	_defaultConfigLogLevel       = "DEBUG"
+	_defaultConfigLogFile        = "agent.log"
 	_defaultHmacKey              = ""
 )
 
@@ -24,6 +25,7 @@ type Config struct {
 	PollInterval   time.Duration
 	HmacKey        string
 	LogLevel       string
+	LogFile        string
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
@@ -64,6 +66,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	}
 
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	config.LogFile, err = env.GetVariable("LOG_FILE", env.CastString, _defaultConfigLogFile)
 	if err != nil {
 		return nil, err
 	}
