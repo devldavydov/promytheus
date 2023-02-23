@@ -35,4 +35,9 @@ const (
 	SELECT delta FROM metric
 	WHERE id=$1 AND mtype=$2
 	`
+	_sqlSelectAllMetrics = `
+	SELECT id, mtype, delta, value
+	FROM metric
+	ORDER BY mtype, id
+	`
 )

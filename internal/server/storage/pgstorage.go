@@ -183,11 +183,7 @@ func (pgstorage *PgStorage) GetAllMetrics() ([]StorageItem, error) {
 
 	var items []StorageItem
 
-	rows, err := pgstorage.db.QueryContext(ctx, `
-		SELECT id, mtype, delta, value
-		FROM metric
-		ORDER BY mtype, id
-	`)
+	rows, err := pgstorage.db.QueryContext(ctx, _sqlSelectAllMetrics)
 	if err != nil {
 		return nil, err
 	}
