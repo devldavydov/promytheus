@@ -78,7 +78,7 @@ func (storage *MemStorage) GetCounterMetric(metricName string) (metric.Counter, 
 	return val, nil
 }
 
-func (storage *MemStorage) SetMetrics(metricList []StorageItem) error {
+func (storage *MemStorage) SetMetrics(metricList []StorageItem) ([]StorageItem, error) {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
@@ -91,7 +91,27 @@ func (storage *MemStorage) SetMetrics(metricList []StorageItem) error {
 	}
 	storage.trySyncPersist()
 
-	return nil
+	// Get result values for response
+	uniqueMetricNames := make(map[string]bool)
+	resultMetrics := make([]StorageItem, 0, len(metricList))
+
+	for _, metricItem := range metricList {
+		if uniqueMetricNames[metricItem.MetricName] {
+			continue
+		}
+
+		uniqueMetricNames[metricItem.MetricName] = true
+		resultItem := StorageItem{MetricName: metricItem.MetricName}
+
+		if metricItem.Value.TypeName() == metric.CounterTypeName {
+			resultItem.Value = storage.counterStorage[metricItem.MetricName]
+		} else if metricItem.Value.TypeName() == metric.GaugeTypeName {
+			resultItem.Value = storage.gaugeStorage[metricItem.MetricName]
+		}
+		resultMetrics = append(resultMetrics, resultItem)
+	}
+
+	return resultMetrics, nil
 }
 
 func (storage *MemStorage) GetAllMetrics() ([]StorageItem, error) {

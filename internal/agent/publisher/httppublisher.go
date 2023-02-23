@@ -32,6 +32,10 @@ func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, logger *logrus.Lo
 }
 
 func (httpPublisher *HTTPPublisher) Publish(ctx context.Context, metricsList []metric.Metrics) (metric.Metrics, error) {
+	if len(metricsList) == 0 {
+		return nil, nil
+	}
+
 	var counterMetricsToSend = make(metric.Metrics)
 
 	httpPublisher.logger.Debugf("Publishing metrics: %+v", metricsList)

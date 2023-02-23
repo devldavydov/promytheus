@@ -258,7 +258,7 @@ func TestGetJSONMetric(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{"id":"foo","type":"gauge","value":123}` + "\n",
+				body:        `{"id":"foo","type":"gauge","value":123}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
@@ -275,7 +275,7 @@ func TestGetJSONMetric(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{"id":"foo","type":"gauge","value":1.23456}` + "\n",
+				body:        `{"id":"foo","type":"gauge","value":1.23456}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
@@ -292,7 +292,7 @@ func TestGetJSONMetric(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{"id":"foo","type":"counter","delta":123}` + "\n",
+				body:        `{"id":"foo","type":"counter","delta":123}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
@@ -316,7 +316,7 @@ func TestGetJSONMetricFromDb(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{"id":"foo","type":"gauge","value":1.23}` + "\n",
+				body:        `{"id":"foo","type":"gauge","value":1.23}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,
@@ -370,7 +370,7 @@ func TestGetJSONMetricFromDb(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{"id":"foo","type":"counter","delta":123}` + "\n",
+				body:        `{"id":"foo","type":"counter","delta":123}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,
@@ -432,7 +432,7 @@ func TestGetJSONMetricWithHash(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}` + "\n",
+				body:        `{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
@@ -450,7 +450,7 @@ func TestGetJSONMetricWithHash(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}` + "\n",
+				body:        `{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
@@ -475,7 +475,7 @@ func TestGetJSONMetricWithHashFromDb(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}` + "\n",
+				body:        `{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,
@@ -494,7 +494,7 @@ func TestGetJSONMetricWithHashFromDb(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}` + "\n",
+				body:        `{"id":"PollCount","type":"counter","delta":5,"hash":"b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,

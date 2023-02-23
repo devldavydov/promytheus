@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/server/middleware"
 	"github.com/devldavydov/promytheus/internal/server/mocks"
 	"github.com/devldavydov/promytheus/internal/server/storage"
@@ -84,8 +85,13 @@ func runTests(t *testing.T, tests []testItem) {
 			statusCode, contentType, body, headers := doTestRequest(t, ts, tt.req)
 
 			assert.Equal(t, tt.resp.code, statusCode)
-			assert.Equal(t, tt.resp.body, body)
 			assert.Equal(t, tt.resp.contentType, contentType)
+
+			if contentType == _http.ContentTypeApplicationJSON {
+				assert.JSONEq(t, tt.resp.body, body)
+			} else {
+				assert.Equal(t, tt.resp.body, body)
+			}
 
 			for expName, expHeaders := range tt.resp.headers {
 				for _, expHeader := range expHeaders {
