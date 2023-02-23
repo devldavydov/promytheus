@@ -2,12 +2,17 @@ package metric
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
+
+	"github.com/devldavydov/promytheus/internal/common/hash"
 )
 
 const GaugeTypeName string = "gauge"
 
 type Gauge float64
+
+var _ MetricValue = (*Gauge)(nil)
 
 func NewGaugeFromString(val string) (Gauge, error) {
 	flVal, err := strconv.ParseFloat(val, 64)
@@ -36,4 +41,8 @@ func (g Gauge) String() string {
 
 func (g Gauge) TypeName() string {
 	return GaugeTypeName
+}
+
+func (g Gauge) Hmac(id, key string) string {
+	return hash.HmacSHA256(fmt.Sprintf("%s:gauge:%f", id, g), key)
 }
