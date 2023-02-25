@@ -102,79 +102,50 @@ func (pgstorage *PgStorage) GetCounterMetric(metricName string) (metric.Counter,
 	return val, nil
 }
 
-func (pgstorage *PgStorage) SetMetrics(metricList []StorageItem) ([]StorageItem, error) {
+func (pgstorage *PgStorage) SetMetrics(metricList []StorageItem) error {
 	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
 	defer cancel()
 
 	// Prepare statements
 	tx, err := pgstorage.db.Begin()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer tx.Rollback()
 
 	stmtCounter, err := tx.PrepareContext(ctx, _sqlUpsertCounter)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer stmtCounter.Close()
 
 	stmtGauge, err := tx.PrepareContext(ctx, _sqlUpsertGauge)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer stmtGauge.Close()
 
-	// Define map for result values
-	resultValues := make(map[string]metric.MetricValue)
-
 	// DB operations
 	for _, metricItem := range metricList {
-		var val metric.MetricValue
-		if metricItem.Value.TypeName() == metric.CounterTypeName {
-			var valC metric.Counter
-			err = stmtCounter.QueryRowContext(ctx,
+		switch metricItem.Value.TypeName() {
+		case metric.CounterTypeName:
+			_, err = stmtCounter.ExecContext(ctx,
 				metricItem.MetricName,
 				metric.CounterTypeName,
-				metricItem.Value.(metric.Counter)).Scan(&valC)
-			if err != nil {
-				return nil, err
-			}
-			val = valC
-		} else if metricItem.Value.TypeName() == metric.GaugeTypeName {
-			var valG metric.Gauge
-			err = stmtGauge.QueryRowContext(ctx,
+				metricItem.Value.(metric.Counter))
+		case metric.GaugeTypeName:
+			_, err = stmtGauge.ExecContext(ctx,
 				metricItem.MetricName,
 				metric.GaugeTypeName,
-				metricItem.Value.(metric.Gauge)).Scan(&valG)
-			if err != nil {
-				return nil, err
-			}
-			val = valG
+				metricItem.Value.(metric.Gauge))
 		}
 
-		resultValues[metricItem.MetricName] = val
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return nil, err
-	}
-
-	// Prepare result values
-	uniqueMetricNames := make(map[string]bool)
-	resultStorageItems := make([]StorageItem, 0, len(metricList))
-
-	for _, metricItem := range metricList {
-		if uniqueMetricNames[metricItem.MetricName] {
-			continue
+		if err != nil {
+			return err
 		}
-
-		uniqueMetricNames[metricItem.MetricName] = true
-		resultStorageItems = append(resultStorageItems, StorageItem{MetricName: metricItem.MetricName, Value: resultValues[metricItem.MetricName]})
 	}
 
-	return resultStorageItems, nil
+	return tx.Commit()
 }
 
 func (pgstorage *PgStorage) GetAllMetrics() ([]StorageItem, error) {

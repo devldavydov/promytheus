@@ -39,13 +39,14 @@ type testRequest struct {
 }
 
 type testItem struct {
-	name        string
-	xfail       bool
-	req         testRequest
-	resp        testResponse
-	dbStg       bool
-	stgInitFunc func(storage.Storage)
-	stgMockFunc func(*mocks.MockStorage)
+	name         string
+	xfail        bool
+	req          testRequest
+	resp         testResponse
+	dbStg        bool
+	stgInitFunc  func(storage.Storage)
+	stgCheckFunc func() []storage.StorageItem
+	stgMockFunc  func(*mocks.MockStorage)
 }
 
 func runTests(t *testing.T, tests []testItem) {
@@ -97,6 +98,11 @@ func runTests(t *testing.T, tests []testItem) {
 				for _, expHeader := range expHeaders {
 					assert.True(t, slices.Contains(headers[expName], expHeader))
 				}
+			}
+
+			if tt.stgCheckFunc != nil {
+				expMetrics, _ := stg.GetAllMetrics()
+				assert.Equal(t, expMetrics, tt.stgCheckFunc())
 			}
 		})
 	}

@@ -14,7 +14,7 @@ type Storage interface {
 	GetGaugeMetric(metricName string) (metric.Gauge, error)
 	SetCounterMetric(metricName string, value metric.Counter) (metric.Counter, error)
 	GetCounterMetric(metricName string) (metric.Counter, error)
-	SetMetrics(metricList []StorageItem) ([]StorageItem, error)
+	SetMetrics(metricList []StorageItem) error
 	GetAllMetrics() ([]StorageItem, error)
 	Ping() bool
 	Close()

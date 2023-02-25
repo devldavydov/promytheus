@@ -62,7 +62,7 @@ func TestCounterGetUnknown(t *testing.T) {
 func TestSetMetrics(t *testing.T) {
 	storage := createMemStorageWithoutPersist()
 
-	result, err := storage.SetMetrics([]StorageItem{
+	err := storage.SetMetrics([]StorageItem{
 		{"foo", metric.Gauge(10.1)},
 		{"cnt1", metric.Counter(1)},
 		{"cnt1", metric.Counter(1)},
@@ -70,10 +70,14 @@ func TestSetMetrics(t *testing.T) {
 		{"cnt2", metric.Counter(2)},
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, []StorageItem{
-		{"foo", metric.Gauge(10.1)},
+
+	result, err := storage.GetAllMetrics()
+	assert.NoError(t, err)
+
+	assert.Equal(t, result, []StorageItem{
 		{"cnt1", metric.Counter(3)},
 		{"cnt2", metric.Counter(2)},
+		{"foo", metric.Gauge(10.1)},
 	}, result)
 }
 

@@ -78,40 +78,21 @@ func (storage *MemStorage) GetCounterMetric(metricName string) (metric.Counter, 
 	return val, nil
 }
 
-func (storage *MemStorage) SetMetrics(metricList []StorageItem) ([]StorageItem, error) {
+func (storage *MemStorage) SetMetrics(metricList []StorageItem) error {
 	storage.mu.Lock()
 	defer storage.mu.Unlock()
 
 	for _, metricItem := range metricList {
-		if metricItem.Value.TypeName() == metric.CounterTypeName {
+		switch metricItem.Value.TypeName() {
+		case metric.CounterTypeName:
 			storage.counterStorage[metricItem.MetricName] += metricItem.Value.(metric.Counter)
-		} else if metricItem.Value.TypeName() == metric.GaugeTypeName {
+		case metric.GaugeTypeName:
 			storage.gaugeStorage[metricItem.MetricName] = metricItem.Value.(metric.Gauge)
 		}
 	}
 	storage.trySyncPersist()
 
-	// Get result values for response
-	uniqueMetricNames := make(map[string]bool)
-	resultMetrics := make([]StorageItem, 0, len(metricList))
-
-	for _, metricItem := range metricList {
-		if uniqueMetricNames[metricItem.MetricName] {
-			continue
-		}
-
-		uniqueMetricNames[metricItem.MetricName] = true
-		resultItem := StorageItem{MetricName: metricItem.MetricName}
-
-		if metricItem.Value.TypeName() == metric.CounterTypeName {
-			resultItem.Value = storage.counterStorage[metricItem.MetricName]
-		} else if metricItem.Value.TypeName() == metric.GaugeTypeName {
-			resultItem.Value = storage.gaugeStorage[metricItem.MetricName]
-		}
-		resultMetrics = append(resultMetrics, resultItem)
-	}
-
-	return resultMetrics, nil
+	return nil
 }
 
 func (storage *MemStorage) GetAllMetrics() ([]StorageItem, error) {

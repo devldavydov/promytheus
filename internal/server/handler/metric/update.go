@@ -96,15 +96,14 @@ func (handler *MetricHandler) UpdateMetricJSONBatch(rw http.ResponseWriter, req 
 	}
 
 	// Save in storage
-	resultMetrics, err := handler.storage.SetMetrics(handler.convertFromParams(paramsList))
-	if err != nil {
+	if err = handler.storage.SetMetrics(handler.convertFromParams(paramsList)); err != nil {
 		handler.logger.Errorf("Update metric error on request [%s], JSON: [%v], err: %v", req.URL, metricReqList, err)
 		_http.CreateStatusResponse(rw, http.StatusInternalServerError)
 		return
 	}
 
 	// Send JSON response with new values
-	_http.CreateJSONResponse(rw, http.StatusOK, handler.convertToResponse(resultMetrics))
+	_http.CreateResponse(rw, _http.ContentTypeApplicationJSON, http.StatusOK, "{}")
 }
 
 func (handler *MetricHandler) convertFromParams(items []requestParams) []storage.StorageItem {
@@ -120,27 +119,4 @@ func (handler *MetricHandler) convertFromParams(items []requestParams) []storage
 		storageItemList = append(storageItemList, stgItem)
 	}
 	return storageItemList
-}
-
-func (handler *MetricHandler) convertToResponse(items []storage.StorageItem) []metric.MetricsDTO {
-	responseMetrics := make([]metric.MetricsDTO, 0, len(items))
-
-	for _, item := range items {
-		responseItem := metric.MetricsDTO{ID: item.MetricName, MType: item.Value.TypeName()}
-
-		if item.Value.TypeName() == metric.CounterTypeName {
-			responseItem.Delta = item.Value.(metric.Counter).IntP()
-		} else if item.Value.TypeName() == metric.GaugeTypeName {
-			responseItem.Value = item.Value.(metric.Gauge).FloatP()
-		}
-
-		if handler.hmacKey != nil {
-			hash := item.Value.Hmac(item.MetricName, *handler.hmacKey)
-			responseItem.Hash = &hash
-		}
-
-		responseMetrics = append(responseMetrics, responseItem)
-	}
-
-	return responseMetrics
 }

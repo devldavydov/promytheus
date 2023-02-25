@@ -757,8 +757,13 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `[{"id": "foo", "type": "gauge", "value": 123.0}]`,
+				body:        `{}`,
 				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgCheckFunc: func() []storage.StorageItem {
+				return []storage.StorageItem{
+					{MetricName: "foo", Value: metric.Gauge(123.0)},
+				}
 			},
 		},
 		{
@@ -771,8 +776,13 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `[{"id": "foo", "type": "counter", "delta": 123}]`,
+				body:        `{}`,
 				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgCheckFunc: func() []storage.StorageItem {
+				return []storage.StorageItem{
+					{MetricName: "foo", Value: metric.Counter(123)},
+				}
 			},
 		},
 		{
@@ -785,11 +795,16 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `[{"id": "foo", "type": "counter", "delta": 246}]`,
+				body:        `{}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("foo", 123)
+			},
+			stgCheckFunc: func() []storage.StorageItem {
+				return []storage.StorageItem{
+					{MetricName: "foo", Value: metric.Counter(246)},
+				}
 			},
 		},
 		{
@@ -803,12 +818,17 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `[{"id": "foo", "type": "counter", "delta": 246}]`,
+				body:        `{}`,
 				contentType: _http.ContentTypeApplicationJSON,
 				headers:     map[string][]string{"Content-Encoding": {"gzip"}},
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("foo", 123)
+			},
+			stgCheckFunc: func() []storage.StorageItem {
+				return []storage.StorageItem{
+					{MetricName: "foo", Value: metric.Counter(246)},
+				}
 			},
 		},
 		{
@@ -828,17 +848,20 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 				contentType: strPointer(_http.ContentTypeApplicationJSON),
 			},
 			resp: testResponse{
-				code: http.StatusOK,
-				body: `[
-					{"id": "bar", "type": "gauge", "value": 123.123},
-					{"id": "foo", "type": "counter", "delta": 4},
-					{"id": "fuzz", "type": "counter", "delta": 4},
-					{"id": "buzz", "type": "counter", "delta": 1}
-				]`,
+				code:        http.StatusOK,
+				body:        `{}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("foo", 1)
+			},
+			stgCheckFunc: func() []storage.StorageItem {
+				return []storage.StorageItem{
+					{MetricName: "buzz", Value: metric.Counter(1)},
+					{MetricName: "foo", Value: metric.Counter(4)},
+					{MetricName: "fuzz", Value: metric.Counter(4)},
+					{MetricName: "bar", Value: metric.Gauge(123.123)},
+				}
 			},
 		},
 	}
@@ -858,14 +881,14 @@ func TestUpdateMetricJSONBatchInDb(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `[{"id": "foo", "type": "gauge", "value": 123.0}]`,
+				body:        `{}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,
 			stgMockFunc: func(ms *mocks.MockStorage) {
 				ms.EXPECT().
 					SetMetrics([]storage.StorageItem{{MetricName: "foo", Value: metric.Gauge(123.0)}}).
-					Return([]storage.StorageItem{{MetricName: "foo", Value: metric.Gauge(123.0)}}, nil)
+					Return(nil)
 			},
 		},
 		{
@@ -885,7 +908,7 @@ func TestUpdateMetricJSONBatchInDb(t *testing.T) {
 			stgMockFunc: func(ms *mocks.MockStorage) {
 				ms.EXPECT().
 					SetMetrics([]storage.StorageItem{{MetricName: "foo", Value: metric.Gauge(123.0)}}).
-					Return(nil, errors.New("db error"))
+					Return(errors.New("db error"))
 			},
 		},
 		{
@@ -898,14 +921,14 @@ func TestUpdateMetricJSONBatchInDb(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `[{"id": "foo", "type": "counter", "delta": 123}]`,
+				body:        `{}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,
 			stgMockFunc: func(ms *mocks.MockStorage) {
 				ms.EXPECT().
 					SetMetrics([]storage.StorageItem{{MetricName: "foo", Value: metric.Counter(123)}}).
-					Return([]storage.StorageItem{{MetricName: "foo", Value: metric.Counter(123)}}, nil)
+					Return(nil)
 			},
 		},
 		{
@@ -925,7 +948,7 @@ func TestUpdateMetricJSONBatchInDb(t *testing.T) {
 			stgMockFunc: func(ms *mocks.MockStorage) {
 				ms.EXPECT().
 					SetMetrics([]storage.StorageItem{{MetricName: "foo", Value: metric.Counter(123)}}).
-					Return(nil, errors.New("db error"))
+					Return(errors.New("db error"))
 			},
 		},
 	}
@@ -949,12 +972,15 @@ func TestUpdateMetricJSONBatchWithHash(t *testing.T) {
 				hmacKey:     strPointer("foobar"),
 			},
 			resp: testResponse{
-				code: http.StatusOK,
-				body: `[
-					{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"},
-					{"id":"PollCount","type":"counter","delta":10,"hash":"81a97c1f7df9b341a13b37951703be75ae2d66236205105cafc6bb0c52c19210"}
-				]`,
+				code:        http.StatusOK,
+				body:        `{}`,
 				contentType: _http.ContentTypeApplicationJSON,
+			},
+			stgCheckFunc: func() []storage.StorageItem {
+				return []storage.StorageItem{
+					{MetricName: "PollCount", Value: metric.Counter(10)},
+					{MetricName: "Sys", Value: metric.Gauge(13220880)},
+				}
 			},
 		},
 		{
@@ -996,11 +1022,8 @@ func TestUpdateMetricJSONBatchWithHashInDb(t *testing.T) {
 				hmacKey:     strPointer("foobar"),
 			},
 			resp: testResponse{
-				code: http.StatusOK,
-				body: `[
-					{"id":"Sys","type":"gauge","value":13220880,"hash":"48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"},
-					{"id":"PollCount","type":"counter","delta":10,"hash":"81a97c1f7df9b341a13b37951703be75ae2d66236205105cafc6bb0c52c19210"}
-				]`,
+				code:        http.StatusOK,
+				body:        `{}`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,
@@ -1011,10 +1034,7 @@ func TestUpdateMetricJSONBatchWithHashInDb(t *testing.T) {
 						{MetricName: "PollCount", Value: metric.Counter(5)},
 						{MetricName: "PollCount", Value: metric.Counter(5)},
 					}).
-					Return([]storage.StorageItem{
-						{MetricName: "Sys", Value: metric.Gauge(13220880)},
-						{MetricName: "PollCount", Value: metric.Counter(10)},
-					}, nil)
+					Return(nil)
 			},
 		},
 		{
@@ -1043,7 +1063,7 @@ func TestUpdateMetricJSONBatchWithHashInDb(t *testing.T) {
 						{MetricName: "PollCount", Value: metric.Counter(5)},
 						{MetricName: "PollCount", Value: metric.Counter(5)},
 					}).
-					Return(nil, errors.New("db error"))
+					Return(errors.New("db error"))
 			},
 		},
 	}

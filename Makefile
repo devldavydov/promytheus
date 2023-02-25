@@ -119,16 +119,16 @@ test_devops: build
 	 -server-port=$${SERVER_PORT} \
 	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
 	 -key="$${TEMP_FILE}"
-	# @export SERVER_PORT=$$(./random unused-port) && \
-	#  export ADDRESS="localhost:$${SERVER_PORT}" && \
-	#  export TEMP_FILE=$$(./random tempfile) && \
-	#  ./devopstest -test.v -test.run=^TestIteration12$$ \
-	#  -source-path=. \
-	#  -agent-binary-path=cmd/agent/agent \
-	#  -binary-path=cmd/server/server \
-	#  -server-port=$${SERVER_PORT} \
-	#  -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
-	#  -key="$${TEMP_FILE}"
+	@export SERVER_PORT=$$(./random unused-port) && \
+	 export ADDRESS="localhost:$${SERVER_PORT}" && \
+	 export TEMP_FILE=$$(./random tempfile) && \
+	 ./devopstest -test.v -test.run=^TestIteration12$$ \
+	 -source-path=. \
+	 -agent-binary-path=cmd/agent/agent \
+	 -binary-path=cmd/server/server \
+	 -server-port=$${SERVER_PORT} \
+	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
+	 -key="$${TEMP_FILE}"
 	@./devopstest -test.v -test.run=^TestIteration13$$ \
 	 -source-path=.
 

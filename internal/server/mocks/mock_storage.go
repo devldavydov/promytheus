@@ -137,12 +137,11 @@ func (mr *MockStorageMockRecorder) SetGaugeMetric(arg0, arg1 interface{}) *gomoc
 }
 
 // SetMetrics mocks base method.
-func (m *MockStorage) SetMetrics(arg0 []storage.StorageItem) ([]storage.StorageItem, error) {
+func (m *MockStorage) SetMetrics(arg0 []storage.StorageItem) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetMetrics", arg0)
-	ret0, _ := ret[0].([]storage.StorageItem)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // SetMetrics indicates an expected call of SetMetrics.
