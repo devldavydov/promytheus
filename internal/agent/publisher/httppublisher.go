@@ -14,67 +14,61 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const httpClientTimeout = 1 * time.Second
+const _httpClientTimeout = 1 * time.Second
 
 type HTTPPublisher struct {
 	serverAddress *url.URL
+	hmacKey       *string
 	httpClient    *http.Client
 	logger        *logrus.Logger
 }
 
-func NewHTTPPublisher(serverAddress *url.URL, logger *logrus.Logger) *HTTPPublisher {
+func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, logger *logrus.Logger) *HTTPPublisher {
 	client := &http.Client{
-		Timeout: httpClientTimeout,
+		Timeout: _httpClientTimeout,
 	}
 
-	return &HTTPPublisher{serverAddress: serverAddress, httpClient: client, logger: logger}
+	return &HTTPPublisher{serverAddress: serverAddress, hmacKey: hmacKey, httpClient: client, logger: logger}
 }
 
 func (httpPublisher *HTTPPublisher) Publish(ctx context.Context, metricsList []metric.Metrics) (metric.Metrics, error) {
-	var failedPublishCounterMetrics = make(metric.Metrics)
-	var err error
+	if len(metricsList) == 0 {
+		return nil, nil
+	}
+
+	var counterMetricsToSend = make(metric.Metrics)
 
 	httpPublisher.logger.Debugf("Publishing metrics: %+v", metricsList)
 
+	metricReq := make([]metric.MetricsDTO, 0, len(metricsList))
+
 	iterateMetrics(ctx, metricsList, func(name string, value metric.MetricValue) {
-		err = httpPublisher.publishMetric(name, value)
-		if err != nil {
-			httpPublisher.logger.Errorf("Failed to publish metric [%s] to [%s]: %v", name, httpPublisher.serverAddress, err)
-			if metric.CounterTypeName == value.TypeName() {
-				curVal, ok := failedPublishCounterMetrics[name]
-				if !ok {
-					failedPublishCounterMetrics[name] = value
-				} else {
-					failedPublishCounterMetrics[name] = curVal.(metric.Counter) + value.(metric.Counter)
-				}
+		metricReq = append(metricReq, httpPublisher.prepareMetric(name, value))
+
+		if value.TypeName() == metric.CounterTypeName {
+			curVal, ok := counterMetricsToSend[name]
+			if !ok {
+				counterMetricsToSend[name] = value
+			} else {
+				counterMetricsToSend[name] = curVal.(metric.Counter) + value.(metric.Counter)
 			}
 		}
 	})
 
-	if len(failedPublishCounterMetrics) != 0 {
-		return failedPublishCounterMetrics, fmt.Errorf("failed to publish: %+v", failedPublishCounterMetrics)
-	} else {
-		return nil, nil
+	if err := httpPublisher.publishMetrics(metricReq); err != nil {
+		return counterMetricsToSend, err
 	}
+
+	return nil, nil
 }
 
-func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue metric.MetricValue) error {
-	metricReq := metric.MetricsDTO{
-		ID:    metricName,
-		MType: metricValue.TypeName(),
-	}
-
-	if metric.GaugeTypeName == metricValue.TypeName() {
-		metricReq.Value = metricValue.(metric.Gauge).FloatP()
-	} else if metric.CounterTypeName == metricValue.TypeName() {
-		metricReq.Delta = metricValue.(metric.Counter).IntP()
-	}
+func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO) error {
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(metricReq)
 
 	request, err := http.NewRequest(
 		http.MethodPost,
-		httpPublisher.serverAddress.JoinPath("update/").String(),
+		httpPublisher.serverAddress.JoinPath("updates/").String(),
 		&buf)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -89,6 +83,26 @@ func (httpPublisher *HTTPPublisher) publishMetric(metricName string, metricValue
 	defer response.Body.Close()
 
 	return nil
+}
+
+func (httpPublisher *HTTPPublisher) prepareMetric(metricName string, metricValue metric.MetricValue) metric.MetricsDTO {
+	metricReq := metric.MetricsDTO{
+		ID:    metricName,
+		MType: metricValue.TypeName(),
+	}
+
+	if metric.GaugeTypeName == metricValue.TypeName() {
+		metricReq.Value = metricValue.(metric.Gauge).FloatP()
+	} else if metric.CounterTypeName == metricValue.TypeName() {
+		metricReq.Delta = metricValue.(metric.Counter).IntP()
+	}
+
+	if httpPublisher.hmacKey != nil {
+		hash := metricValue.Hmac(metricName, *httpPublisher.hmacKey)
+		metricReq.Hash = &hash
+	}
+
+	return metricReq
 }
 
 func iterateMetrics(ctx context.Context, metricsList []metric.Metrics, fn func(name string, value metric.MetricValue)) {

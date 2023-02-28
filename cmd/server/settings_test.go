@@ -18,8 +18,10 @@ func TestServerSettingsAdaptDefault(t *testing.T) {
 
 	assert.Equal(t, "127.0.0.1", serverSettings.ServerAddress)
 	assert.Equal(t, 8080, serverSettings.ServerPort)
+	assert.Nil(t, serverSettings.HmacKey)
 	assert.Equal(t, 300*time.Second, serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
+	assert.Equal(t, "", serverSettings.DatabaseDsn)
 	assert.True(t, serverSettings.PersistSettings.Restore)
 }
 
@@ -30,6 +32,8 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 		t.Setenv("STORE_INTERVAL", "0")
 		t.Setenv("STORE_FILE", storeFile)
 		t.Setenv("RESTORE", "false")
+		t.Setenv("KEY", "123")
+		t.Setenv("DATABASE_DSN", "postgre:5444")
 
 		testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 		config, err := LoadConfig(*testFlagSet, []string{})
@@ -40,15 +44,19 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 
 		assert.Equal(t, "1.1.1.1", serverSettings.ServerAddress)
 		assert.Equal(t, 9999, serverSettings.ServerPort)
+		assert.Equal(t, "123", *serverSettings.HmacKey)
 		assert.Equal(t, time.Duration(0), serverSettings.PersistSettings.StoreInterval)
 		assert.Equal(t, storeFile, serverSettings.PersistSettings.StoreFile)
 		assert.False(t, serverSettings.PersistSettings.Restore)
+		assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 	}
 }
 
 func TestServerSettingsAdaptCustomFlag(t *testing.T) {
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	config, err := LoadConfig(*testFlagSet, []string{"-a", "1.1.1.1:9999", "-i", "0s", "-f", "/tmp/ttt", "-r=false"})
+	config, err := LoadConfig(
+		*testFlagSet,
+		[]string{"-a", "1.1.1.1:9999", "-i", "0s", "-f", "/tmp/ttt", "-r=false", "-k", "123", "-d", "postgre:5444"})
 	assert.NoError(t, err)
 
 	serverSettings, err := ServerSettingsAdapt(config)
@@ -56,9 +64,11 @@ func TestServerSettingsAdaptCustomFlag(t *testing.T) {
 
 	assert.Equal(t, "1.1.1.1", serverSettings.ServerAddress)
 	assert.Equal(t, 9999, serverSettings.ServerPort)
+	assert.Equal(t, "123", *serverSettings.HmacKey)
 	assert.Equal(t, time.Duration(0), serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/ttt", serverSettings.PersistSettings.StoreFile)
 	assert.False(t, serverSettings.PersistSettings.Restore)
+	assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 }
 
 func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
@@ -66,9 +76,13 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	t.Setenv("STORE_INTERVAL", "0")
 	t.Setenv("STORE_FILE", "/tmp/ttt")
 	t.Setenv("RESTORE", "false")
+	t.Setenv("KEY", "123")
+	t.Setenv("DATABASE_DSN", "postgre:5444")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	config, err := LoadConfig(*testFlagSet, []string{"-a", "7.7.7.7:7777", "-i", "10s", "-f", "/tmp/aaa", "-r=true"})
+	config, err := LoadConfig(
+		*testFlagSet,
+		[]string{"-a", "7.7.7.7:7777", "-i", "10s", "-f", "/tmp/aaa", "-r=true", "-k", "456", "-d", "postgre:5444"})
 	assert.NoError(t, err)
 
 	serverSettings, err := ServerSettingsAdapt(config)
@@ -76,9 +90,11 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 
 	assert.Equal(t, "1.1.1.1", serverSettings.ServerAddress)
 	assert.Equal(t, 9999, serverSettings.ServerPort)
+	assert.Equal(t, "123", *serverSettings.HmacKey)
 	assert.Equal(t, time.Duration(0), serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/ttt", serverSettings.PersistSettings.StoreFile)
 	assert.False(t, serverSettings.PersistSettings.Restore)
+	assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 }
 
 func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
@@ -86,7 +102,7 @@ func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	t.Setenv("RESTORE", "true")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	config, err := LoadConfig(*testFlagSet, []string{"-i", "5m", "-r=false"})
+	config, err := LoadConfig(*testFlagSet, []string{"-i", "5m", "-r=false", "-k", "123"})
 	assert.NoError(t, err)
 
 	serverSettings, err := ServerSettingsAdapt(config)
@@ -94,9 +110,11 @@ func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 
 	assert.Equal(t, "127.0.0.1", serverSettings.ServerAddress)
 	assert.Equal(t, 8080, serverSettings.ServerPort)
+	assert.Equal(t, "123", *serverSettings.HmacKey)
 	assert.Equal(t, 1*time.Second, serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
 	assert.True(t, serverSettings.PersistSettings.Restore)
+	assert.Equal(t, "", serverSettings.DatabaseDsn)
 }
 
 func TestServerSettingsAdaptCustomError(t *testing.T) {

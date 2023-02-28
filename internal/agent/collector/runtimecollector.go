@@ -47,6 +47,17 @@ func (rc *RuntimeCollector) Start(ctx context.Context) {
 	}
 }
 
+func (rc *RuntimeCollector) Collect() (metric.Metrics, error) {
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+
+	rc.pollCnt = 0
+
+	rc.logger.Debugf("Collected metrics: %+v", rc.currentMetrics)
+
+	return rc.currentMetrics, nil
+}
+
 func (rc *RuntimeCollector) getRuntimeMetrics() (metric.Metrics, error) {
 	rc.pollCnt += 1
 	memStats := runtime.MemStats{}
@@ -83,15 +94,4 @@ func (rc *RuntimeCollector) getRuntimeMetrics() (metric.Metrics, error) {
 		"PollCount":     metric.Counter(rc.pollCnt),
 		"RandomValue":   metric.Gauge(rand.Float64()),
 	}, nil
-}
-
-func (rc *RuntimeCollector) Collect() (metric.Metrics, error) {
-	rc.mu.Lock()
-	defer rc.mu.Unlock()
-
-	rc.pollCnt = 0
-
-	rc.logger.Debugf("Collected metrics: %+v", rc.currentMetrics)
-
-	return rc.currentMetrics, nil
 }

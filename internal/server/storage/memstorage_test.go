@@ -19,10 +19,6 @@ func TestGaugeSetAndGet(t *testing.T) {
 	res, err := storage.GetGaugeMetric("foo")
 	assert.NoError(t, err)
 	assert.Equal(t, val, res)
-
-	res, err = storage.SetAndGetGaugeMetric("bar", val)
-	assert.NoError(t, err)
-	assert.Equal(t, val, res)
 }
 
 func TestGaugeGetUnknown(t *testing.T) {
@@ -40,10 +36,6 @@ func TestCounterSetNewAndGet(t *testing.T) {
 	res, err := storage.GetCounterMetric("foo")
 	assert.NoError(t, err)
 	assert.Equal(t, val, res)
-
-	res, err = storage.SetAndGetCounterMetric("bar", val)
-	assert.NoError(t, err)
-	assert.Equal(t, val, res)
 }
 
 func TestCounterSetExistingAndGet(t *testing.T) {
@@ -55,7 +47,7 @@ func TestCounterSetExistingAndGet(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, metric.Counter(10), res)
 
-	res, err = storage.SetAndGetCounterMetric("foo", metric.Counter(5))
+	res, err = storage.SetCounterMetric("foo", metric.Counter(5))
 	assert.NoError(t, err)
 	assert.Equal(t, metric.Counter(15), res)
 }
@@ -65,6 +57,28 @@ func TestCounterGetUnknown(t *testing.T) {
 
 	_, err := storage.GetCounterMetric("foo")
 	assert.ErrorIs(t, err, ErrMetricNotFound)
+}
+
+func TestSetMetrics(t *testing.T) {
+	storage := createMemStorageWithoutPersist()
+
+	err := storage.SetMetrics([]StorageItem{
+		{"foo", metric.Gauge(10.1)},
+		{"cnt1", metric.Counter(1)},
+		{"cnt1", metric.Counter(1)},
+		{"cnt1", metric.Counter(1)},
+		{"cnt2", metric.Counter(2)},
+	})
+	assert.NoError(t, err)
+
+	result, err := storage.GetAllMetrics()
+	assert.NoError(t, err)
+
+	assert.Equal(t, result, []StorageItem{
+		{"cnt1", metric.Counter(3)},
+		{"cnt2", metric.Counter(2)},
+		{"foo", metric.Gauge(10.1)},
+	}, result)
 }
 
 func TestGetAllMetrics(t *testing.T) {
@@ -137,6 +151,11 @@ func TestSyncIntervalPersistAndRestore(t *testing.T) {
 	gVal, err := storage2.GetGaugeMetric("bar")
 	assert.NoError(t, err)
 	assert.Equal(t, metric.Gauge(4.9), gVal)
+}
+
+func TestPing(t *testing.T) {
+	storage := createMemStorageWithoutPersist()
+	assert.True(t, storage.Ping())
 }
 
 func createMemStorageWithoutPersist() *MemStorage {
