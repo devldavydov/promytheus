@@ -17,6 +17,7 @@ type collectWorker interface {
 type Collector struct {
 	collectWorker
 	mu             sync.Mutex
+	name           string
 	pollInterval   time.Duration
 	currentMetrics metric.Metrics
 	logger         *logrus.Logger
@@ -33,14 +34,14 @@ func (c *Collector) Start(ctx context.Context) {
 
 			metrics, err := c.getMetrics()
 			if err != nil {
-				c.logger.Errorf("Failed to get runtime metrics: %v", err)
+				c.logger.Errorf("Collector [%s] failed to get runtime metrics: %v", c.name, err)
 				continue
 			}
 			c.currentMetrics = metrics
 
 			c.mu.Unlock()
 		case <-ctx.Done():
-			c.logger.Info("Collector thread shutdown due to context closed")
+			c.logger.Infof("Collector [%s] thread shutdown due to context closed", c.name)
 			return
 		}
 	}
@@ -52,7 +53,7 @@ func (c *Collector) Collect() (metric.Metrics, error) {
 
 	c.collectCleanup()
 
-	c.logger.Debugf("Collected metrics: %+v", c.currentMetrics)
+	c.logger.Debugf("Collector [%s] collected metrics: %+v", c.name, c.currentMetrics)
 
 	return c.currentMetrics, nil
 }

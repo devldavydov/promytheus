@@ -17,6 +17,7 @@ var _ collectWorker = (*PsUtilCollector)(nil)
 func NewPsUtilCollector(pollInterval time.Duration, logger *logrus.Logger) *Collector {
 	return &Collector{
 		collectWorker: &PsUtilCollector{},
+		name:          "PsUtilCollector",
 		pollInterval:  pollInterval,
 		logger:        logger,
 	}

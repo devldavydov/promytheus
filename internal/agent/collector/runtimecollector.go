@@ -18,6 +18,7 @@ var _ collectWorker = (*RuntimeCollector)(nil)
 func NewRuntimeCollector(pollInterval time.Duration, logger *logrus.Logger) *Collector {
 	return &Collector{
 		collectWorker: &RuntimeCollector{pollCnt: 0},
+		name:          "RuntimeCollector",
 		pollInterval:  pollInterval,
 		logger:        logger,
 	}

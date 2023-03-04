@@ -25,7 +25,7 @@ type Service struct {
 	logger                      *logrus.Logger
 	failedPublishCounterMetrics metric.Metrics
 	collectors                  []Collector
-	publisherFactory            func() Publisher
+	publisherFactory            func(threadID int) Publisher
 	metricsChan                 chan metric.Metrics
 }
 
@@ -42,8 +42,8 @@ func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 		logger:      logger,
 		collectors:  collectors,
 		metricsChan: ch,
-		publisherFactory: func() Publisher {
-			return publisher.NewHTTPPublisher(settings.ServerAddress, settings.HmacKey, ch, logger)
+		publisherFactory: func(threadID int) Publisher {
+			return publisher.NewHTTPPublisher(settings.ServerAddress, settings.HmacKey, ch, threadID, logger)
 		},
 	}
 }
@@ -63,10 +63,10 @@ func (service *Service) Start(ctx context.Context) error {
 
 	for i := 0; i < service.settings.RateLimit; i++ {
 		wg.Add(1)
-		go func(ctx context.Context) {
+		go func(ctx context.Context, threadID int) {
 			defer wg.Done()
-			service.publisherFactory().Publish(ctx)
-		}(ctx)
+			service.publisherFactory(threadID).Publish(ctx)
+		}(ctx, i+1)
 	}
 
 	service.startMainLoop(ctx)
