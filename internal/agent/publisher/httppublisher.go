@@ -20,46 +20,48 @@ type HTTPPublisher struct {
 	serverAddress *url.URL
 	hmacKey       *string
 	httpClient    *http.Client
+	metricsChan   chan metric.Metrics
 	logger        *logrus.Logger
 }
 
-func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, logger *logrus.Logger) *HTTPPublisher {
+func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, metricsChan chan metric.Metrics, logger *logrus.Logger) *HTTPPublisher {
 	client := &http.Client{
 		Timeout: _httpClientTimeout,
 	}
 
-	return &HTTPPublisher{serverAddress: serverAddress, hmacKey: hmacKey, httpClient: client, logger: logger}
+	return &HTTPPublisher{serverAddress: serverAddress, hmacKey: hmacKey, httpClient: client, metricsChan: metricsChan, logger: logger}
 }
 
-func (httpPublisher *HTTPPublisher) Publish(ctx context.Context, metricsList []metric.Metrics) (metric.Metrics, error) {
-	if len(metricsList) == 0 {
-		return nil, nil
+func (httpPublisher *HTTPPublisher) Publish(ctx context.Context) {
+	for {
+		select {
+		case metricsToSend := <-httpPublisher.metricsChan:
+			httpPublisher.processMetrics(metricsToSend)
+		case <-ctx.Done():
+			httpPublisher.logger.Info("Published thread shutdown due to context closed")
+			return
+		}
 	}
+}
 
+func (httpPublisher *HTTPPublisher) processMetrics(metricsToSend metric.Metrics) {
 	var counterMetricsToSend = make(metric.Metrics)
 
-	httpPublisher.logger.Debugf("Publishing metrics: %+v", metricsList)
+	httpPublisher.logger.Debugf("Publishing metrics: %+v", metricsToSend)
 
-	metricReq := make([]metric.MetricsDTO, 0, len(metricsList))
+	metricReq := make([]metric.MetricsDTO, 0, len(metricsToSend))
 
-	iterateMetrics(ctx, metricsList, func(name string, value metric.MetricValue) {
+	for name, value := range metricsToSend {
 		metricReq = append(metricReq, httpPublisher.prepareMetric(name, value))
 
 		if value.TypeName() == metric.CounterTypeName {
-			curVal, ok := counterMetricsToSend[name]
-			if !ok {
-				counterMetricsToSend[name] = value
-			} else {
-				counterMetricsToSend[name] = curVal.(metric.Counter) + value.(metric.Counter)
-			}
+			counterMetricsToSend[name] = value
 		}
-	})
-
-	if err := httpPublisher.publishMetrics(metricReq); err != nil {
-		return counterMetricsToSend, err
 	}
 
-	return nil, nil
+	if err := httpPublisher.publishMetrics(metricReq); err != nil {
+		httpPublisher.metricsChan <- counterMetricsToSend
+	}
 }
 
 func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO) error {
@@ -103,15 +105,4 @@ func (httpPublisher *HTTPPublisher) prepareMetric(metricName string, metricValue
 	}
 
 	return metricReq
-}
-
-func iterateMetrics(ctx context.Context, metricsList []metric.Metrics, fn func(name string, value metric.MetricValue)) {
-	for _, metrics := range metricsList {
-		for name, value := range metrics {
-			if ctx.Err() != nil {
-				return
-			}
-			fn(name, value)
-		}
-	}
 }
