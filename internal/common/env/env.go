@@ -42,3 +42,11 @@ func CastDuration(val string) (time.Duration, error) {
 	}
 	return dVal, nil
 }
+
+func CastInt(val string) (int, error) {
+	iVal, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, err
+	}
+	return iVal, nil
+}

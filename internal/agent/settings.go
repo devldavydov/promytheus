@@ -10,9 +10,10 @@ type ServiceSettings struct {
 	PollInterval   time.Duration
 	ReportInterval time.Duration
 	HmacKey        *string
+	RateLimit      int
 }
 
-func NewServiceSettings(serverAddress string, pollInterval time.Duration, reportInterval time.Duration, hmacKey string) (ServiceSettings, error) {
+func NewServiceSettings(serverAddress string, pollInterval time.Duration, reportInterval time.Duration, hmacKey string, rateLimit int) (ServiceSettings, error) {
 	url, err := url.ParseRequestURI(serverAddress)
 	if err != nil {
 		return ServiceSettings{}, err
@@ -28,5 +29,6 @@ func NewServiceSettings(serverAddress string, pollInterval time.Duration, report
 		PollInterval:   pollInterval,
 		ReportInterval: reportInterval,
 		HmacKey:        hmac,
+		RateLimit:      rateLimit,
 	}, nil
 }
