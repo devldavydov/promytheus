@@ -35,7 +35,7 @@ func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 		collector.NewPsUtilCollector(settings.PollInterval, logger),
 	}
 
-	ch := make(chan metric.Metrics, len(collectors)*3)
+	ch := make(chan metric.Metrics, len(collectors)*2)
 
 	return &Service{
 		settings:    settings,
