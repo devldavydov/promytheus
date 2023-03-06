@@ -20,13 +20,13 @@ type HTTPPublisher struct {
 	serverAddress        *url.URL
 	hmacKey              *string
 	httpClient           *http.Client
-	metricsChan          chan metric.Metrics
+	metricsChan          <-chan metric.Metrics
 	threadID             int
 	logger               *logrus.Logger
 	failedCounterMetrics metric.Metrics
 }
 
-func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, metricsChan chan metric.Metrics, threadID int, logger *logrus.Logger) *HTTPPublisher {
+func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, metricsChan <-chan metric.Metrics, threadID int, logger *logrus.Logger) *HTTPPublisher {
 	client := &http.Client{
 		Timeout: _httpClientTimeout,
 	}
