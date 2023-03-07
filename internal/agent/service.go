@@ -17,23 +17,34 @@ type Collector interface {
 }
 
 type Publisher interface {
-	Publish(context.Context, []metric.Metrics) (metric.Metrics, error)
+	Publish(context.Context)
 }
 
 type Service struct {
 	settings                    ServiceSettings
 	logger                      *logrus.Logger
 	failedPublishCounterMetrics metric.Metrics
-	collector                   Collector
-	publisher                   Publisher
+	collectors                  []Collector
+	publisherFactory            func(threadID int) Publisher
+	metricsChan                 chan metric.Metrics
 }
 
 func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
+	collectors := []Collector{
+		collector.NewRuntimeCollector(settings.PollInterval, logger),
+		collector.NewPsUtilCollector(settings.PollInterval, logger),
+	}
+
+	ch := make(chan metric.Metrics, len(collectors)*2)
+
 	return &Service{
-		settings:  settings,
-		logger:    logger,
-		collector: collector.NewRuntimeCollector(settings.PollInterval, logger),
-		publisher: publisher.NewHTTPPublisher(settings.ServerAddress, settings.HmacKey, logger),
+		settings:    settings,
+		logger:      logger,
+		collectors:  collectors,
+		metricsChan: ch,
+		publisherFactory: func(threadID int) Publisher {
+			return publisher.NewHTTPPublisher(settings.ServerAddress, settings.HmacKey, ch, threadID, logger)
+		},
 	}
 }
 
@@ -42,11 +53,21 @@ func (service *Service) Start(ctx context.Context) error {
 
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func(ctx context.Context) {
-		defer wg.Done()
-		service.collector.Start(ctx)
-	}(ctx)
+	for _, collector := range service.collectors {
+		wg.Add(1)
+		go func(ctx context.Context, clctr Collector) {
+			defer wg.Done()
+			clctr.Start(ctx)
+		}(ctx, collector)
+	}
+
+	for i := 0; i < service.settings.RateLimit; i++ {
+		wg.Add(1)
+		go func(ctx context.Context, threadID int) {
+			defer wg.Done()
+			service.publisherFactory(threadID).Publish(ctx)
+		}(ctx, i+1)
+	}
 
 	service.startMainLoop(ctx)
 	wg.Wait()
@@ -64,19 +85,15 @@ func (service *Service) startMainLoop(ctx context.Context) {
 		case <-ticker.C:
 			service.logger.Debugf("Start reporting metrics")
 
-			metrics, err := service.collector.Collect()
-			if err != nil {
-				service.logger.Errorf("Failed to collect metrics from collector: %v", err)
-				continue
-			}
+			for _, collector := range service.collectors {
+				metrics, err := collector.Collect()
+				if err != nil {
+					service.logger.Errorf("Failed to collect metrics from collector: %v", err)
+					continue
+				}
 
-			failedPublishCounterMetrics, err := service.publisher.Publish(ctx, []metric.Metrics{metrics, service.failedPublishCounterMetrics})
-			if err != nil {
-				service.logger.Errorf("Publish metrics error: %v", err)
-				service.failedPublishCounterMetrics = failedPublishCounterMetrics
-				continue
+				service.metricsChan <- metrics
 			}
-			service.failedPublishCounterMetrics = nil
 		case <-ctx.Done():
 			service.logger.Info("Main loop shutdown due to context closed")
 			return

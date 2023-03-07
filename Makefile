@@ -131,6 +131,18 @@ test_devops: build
 	 -key="$${TEMP_FILE}"
 	@./devopstest -test.v -test.run=^TestIteration13$$ \
 	 -source-path=.
+	@export SERVER_PORT=$$(./random unused-port) && \
+	 export ADDRESS="localhost:$${SERVER_PORT}" && \
+	 export TEMP_FILE=$$(./random tempfile) && \
+	 ./devopstest -test.v -test.run=^TestIteration14$$ \
+	 -source-path=. \
+	 -agent-binary-path=cmd/agent/agent \
+	 -binary-path=cmd/server/server \
+	 -server-port=$${SERVER_PORT} \
+	 -file-storage-path=$${TEMP_FILE} \
+	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
+	 -key="$${TEMP_FILE}"
+	@go test -v -race ./...
 
 .PHONY: clean
 clean:

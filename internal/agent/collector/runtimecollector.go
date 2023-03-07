@@ -1,10 +1,8 @@
 package collector
 
 import (
-	"context"
 	"math/rand"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/devldavydov/promytheus/internal/common/metric"
@@ -12,53 +10,21 @@ import (
 )
 
 type RuntimeCollector struct {
-	mu             sync.Mutex
-	pollCnt        int64
-	pollInterval   time.Duration
-	currentMetrics metric.Metrics
-	logger         *logrus.Logger
+	pollCnt int64
 }
 
-func NewRuntimeCollector(pollInterval time.Duration, logger *logrus.Logger) *RuntimeCollector {
-	return &RuntimeCollector{pollCnt: 0, pollInterval: pollInterval, logger: logger}
-}
+var _ collectWorker = (*RuntimeCollector)(nil)
 
-func (rc *RuntimeCollector) Start(ctx context.Context) {
-	ticker := time.NewTicker(rc.pollInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			rc.mu.Lock()
-
-			metrics, err := rc.getRuntimeMetrics()
-			if err != nil {
-				rc.logger.Errorf("Failed to get runtime metrics: %v", err)
-				continue
-			}
-			rc.currentMetrics = metrics
-
-			rc.mu.Unlock()
-		case <-ctx.Done():
-			rc.logger.Info("Collector thread shutdown due to context closed")
-			return
-		}
+func NewRuntimeCollector(pollInterval time.Duration, logger *logrus.Logger) *Collector {
+	return &Collector{
+		collectWorker: &RuntimeCollector{pollCnt: 0},
+		name:          "RuntimeCollector",
+		pollInterval:  pollInterval,
+		logger:        logger,
 	}
 }
 
-func (rc *RuntimeCollector) Collect() (metric.Metrics, error) {
-	rc.mu.Lock()
-	defer rc.mu.Unlock()
-
-	rc.pollCnt = 0
-
-	rc.logger.Debugf("Collected metrics: %+v", rc.currentMetrics)
-
-	return rc.currentMetrics, nil
-}
-
-func (rc *RuntimeCollector) getRuntimeMetrics() (metric.Metrics, error) {
+func (rc *RuntimeCollector) getMetrics() (metric.Metrics, error) {
 	rc.pollCnt += 1
 	memStats := runtime.MemStats{}
 	runtime.ReadMemStats(&memStats)
@@ -94,4 +60,8 @@ func (rc *RuntimeCollector) getRuntimeMetrics() (metric.Metrics, error) {
 		"PollCount":     metric.Counter(rc.pollCnt),
 		"RandomValue":   metric.Gauge(rand.Float64()),
 	}, nil
+}
+
+func (rc *RuntimeCollector) collectCleanup() {
+	rc.pollCnt = 0
 }

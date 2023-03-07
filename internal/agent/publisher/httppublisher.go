@@ -17,30 +17,48 @@ import (
 const _httpClientTimeout = 1 * time.Second
 
 type HTTPPublisher struct {
-	serverAddress *url.URL
-	hmacKey       *string
-	httpClient    *http.Client
-	logger        *logrus.Logger
+	serverAddress        *url.URL
+	hmacKey              *string
+	httpClient           *http.Client
+	metricsChan          <-chan metric.Metrics
+	threadID             int
+	logger               *logrus.Logger
+	failedCounterMetrics metric.Metrics
 }
 
-func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, logger *logrus.Logger) *HTTPPublisher {
+func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, metricsChan <-chan metric.Metrics, threadID int, logger *logrus.Logger) *HTTPPublisher {
 	client := &http.Client{
 		Timeout: _httpClientTimeout,
 	}
 
-	return &HTTPPublisher{serverAddress: serverAddress, hmacKey: hmacKey, httpClient: client, logger: logger}
+	return &HTTPPublisher{
+		serverAddress: serverAddress,
+		hmacKey:       hmacKey,
+		httpClient:    client,
+		metricsChan:   metricsChan,
+		threadID:      threadID,
+		logger:        logger,
+	}
 }
 
-func (httpPublisher *HTTPPublisher) Publish(ctx context.Context, metricsList []metric.Metrics) (metric.Metrics, error) {
-	if len(metricsList) == 0 {
-		return nil, nil
+func (httpPublisher *HTTPPublisher) Publish(ctx context.Context) {
+	for {
+		select {
+		case metricsToSend := <-httpPublisher.metricsChan:
+			httpPublisher.processMetrics(ctx, []metric.Metrics{metricsToSend, httpPublisher.failedCounterMetrics})
+		case <-ctx.Done():
+			httpPublisher.logger.Infof("Publisher[%d] thread shutdown due to context closed", httpPublisher.threadID)
+			return
+		}
 	}
+}
 
+func (httpPublisher *HTTPPublisher) processMetrics(ctx context.Context, metricsList []metric.Metrics) {
 	var counterMetricsToSend = make(metric.Metrics)
 
-	httpPublisher.logger.Debugf("Publishing metrics: %+v", metricsList)
+	httpPublisher.logger.Debugf("Publisher[%d] publishing metrics: %+v", httpPublisher.threadID, metricsList)
 
-	metricReq := make([]metric.MetricsDTO, 0, len(metricsList))
+	metricReq := make([]metric.MetricsDTO, 0, totalMetrics(metricsList))
 
 	iterateMetrics(ctx, metricsList, func(name string, value metric.MetricValue) {
 		metricReq = append(metricReq, httpPublisher.prepareMetric(name, value))
@@ -56,10 +74,12 @@ func (httpPublisher *HTTPPublisher) Publish(ctx context.Context, metricsList []m
 	})
 
 	if err := httpPublisher.publishMetrics(metricReq); err != nil {
-		return counterMetricsToSend, err
+		httpPublisher.logger.Errorf("publisher[%d] failed to publish: %v", httpPublisher.threadID, err)
+		httpPublisher.failedCounterMetrics = counterMetricsToSend
+		return
 	}
 
-	return nil, nil
+	httpPublisher.failedCounterMetrics = nil
 }
 
 func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO) error {
@@ -71,14 +91,14 @@ func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO
 		httpPublisher.serverAddress.JoinPath("updates/").String(),
 		&buf)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("publisher[%d] failed to create request: %w", httpPublisher.threadID, err)
 	}
 
 	request.Header.Set("Content-Type", _http.ContentTypeApplicationJSON)
 
 	response, err := httpPublisher.httpClient.Do(request)
 	if err != nil {
-		return fmt.Errorf("failed to send request: %w", err)
+		return fmt.Errorf("publisher[%d] failed to send request: %w", httpPublisher.threadID, err)
 	}
 	defer response.Body.Close()
 
@@ -114,4 +134,12 @@ func iterateMetrics(ctx context.Context, metricsList []metric.Metrics, fn func(n
 			fn(name, value)
 		}
 	}
+}
+
+func totalMetrics(metricsList []metric.Metrics) int {
+	cnt := 0
+	for _, m := range metricsList {
+		cnt += len(m)
+	}
+	return cnt
 }

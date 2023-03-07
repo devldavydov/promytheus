@@ -17,6 +17,7 @@ const (
 	_defaultConfigLogLevel       = "DEBUG"
 	_defaultConfigLogFile        = "agent.log"
 	_defaultHmacKey              = ""
+	_defaultRateLimit            = 2
 )
 
 type Config struct {
@@ -24,6 +25,7 @@ type Config struct {
 	ReportInterval time.Duration
 	PollInterval   time.Duration
 	HmacKey        string
+	RateLimit      int
 	LogLevel       string
 	LogFile        string
 }
@@ -36,6 +38,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.DurationVar(&config.ReportInterval, "r", _defaultConfigReportInterval, "report interval")
 	flagSet.DurationVar(&config.PollInterval, "p", _defaultConfigPollInterval, "poll interval")
 	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
+	flagSet.IntVar(&config.RateLimit, "l", _defaultRateLimit, "rate limit")
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flagSet.PrintDefaults()
@@ -65,6 +68,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.RateLimit, err = env.GetVariable("RATE_LIMIT", env.CastInt, config.RateLimit)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -83,7 +91,8 @@ func AgentSettingsAdapt(config *Config) (agent.ServiceSettings, error) {
 		"http://"+config.Address,
 		config.PollInterval,
 		config.ReportInterval,
-		config.HmacKey)
+		config.HmacKey,
+		config.RateLimit)
 	if err != nil {
 		return agent.ServiceSettings{}, err
 	}
