@@ -5,11 +5,11 @@ all: clean mock_gen build test
 prepare_env:
 	@echo "\n### $@"
 	@go install github.com/golang/mock/mockgen@v1.6.0
-	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.7.11/devopstest -O ./devopstest
+	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.9.6/devopstest -O ./devopstest
 	@chmod u+x ./devopstest
-	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.7.11/statictest -O ./statictest
+	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.9.6/statictest -O ./statictest
 	@chmod u+x ./statictest
-	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.7.11/random -O ./random
+	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.9.6/random -O ./random
 	@chmod u+x ./random
 
 .PHONY: mock_gen

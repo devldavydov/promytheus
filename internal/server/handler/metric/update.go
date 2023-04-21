@@ -103,7 +103,7 @@ func (handler *MetricHandler) UpdateMetricJSONBatch(rw http.ResponseWriter, req 
 	}
 
 	// Send JSON response with new values
-	_http.CreateResponse(rw, _http.ContentTypeApplicationJSON, http.StatusOK, "{}")
+	_http.CreateResponse(rw, _http.ContentTypeApplicationJSON, http.StatusOK, "[]")
 }
 
 func (handler *MetricHandler) convertFromParams(items []requestParams) []storage.StorageItem {

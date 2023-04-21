@@ -757,7 +757,7 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{}`,
+				body:        `[]`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgCheckFunc: func() []storage.StorageItem {
@@ -776,7 +776,7 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{}`,
+				body:        `[]`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgCheckFunc: func() []storage.StorageItem {
@@ -795,7 +795,7 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{}`,
+				body:        `[]`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
@@ -818,7 +818,7 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{}`,
+				body:        `[]`,
 				contentType: _http.ContentTypeApplicationJSON,
 				headers:     map[string][]string{"Content-Encoding": {"gzip"}},
 			},
@@ -849,7 +849,7 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{}`,
+				body:        `[]`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgInitFunc: func(s storage.Storage) {
@@ -881,7 +881,7 @@ func TestUpdateMetricJSONBatchInDb(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{}`,
+				body:        `[]`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,
@@ -921,7 +921,7 @@ func TestUpdateMetricJSONBatchInDb(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{}`,
+				body:        `[]`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,
@@ -973,7 +973,7 @@ func TestUpdateMetricJSONBatchWithHash(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{}`,
+				body:        `[]`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			stgCheckFunc: func() []storage.StorageItem {
@@ -1023,7 +1023,7 @@ func TestUpdateMetricJSONBatchWithHashInDb(t *testing.T) {
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
-				body:        `{}`,
+				body:        `[]`,
 				contentType: _http.ContentTypeApplicationJSON,
 			},
 			dbStg: true,
