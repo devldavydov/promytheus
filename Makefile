@@ -144,6 +144,18 @@ test_devops: build
 	 -key="$${TEMP_FILE}"
 	@go test -v -race ./...
 
+.PHONY: test_bench
+test_bench: build
+	@echo "\n### $@"
+	@mkdir -p profiles
+	@cd internal/server/handler/metric && go test . -run=$^ -bench=. -memprofile=mem.pprof
+	@mv internal/server/handler/metric/mem.pprof profiles/
+
+.PHONE: diff_bench
+diff_bench:
+	@echo "\n### $@"
+	@go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof
+
 .PHONY: clean
 clean:
 	@echo "\n### $@"
