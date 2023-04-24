@@ -151,10 +151,15 @@ test_bench: build
 	@cd internal/server/handler/metric && go test . -run=$^ -bench=. -memprofile=mem.pprof
 	@mv internal/server/handler/metric/mem.pprof profiles/
 
-.PHONE: diff_bench
+.PHONY: diff_bench
 diff_bench:
 	@echo "\n### $@"
 	@go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof
+
+.PHONY: run_docs
+run_docs:
+	@echo "See docs in http://localhost:8080/pkg/github.com/devldavydov/promytheus/?m=all"
+	@godoc -http=:8080
 
 .PHONY: clean
 clean:
