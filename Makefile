@@ -161,6 +161,12 @@ run_docs:
 	@echo "See docs in http://localhost:8080/pkg/github.com/devldavydov/promytheus/?m=all"
 	@godoc -http=:8080
 
+.PHONY: gen_swagger
+gen_swagger:
+	@echo "\n### $@"
+	@swag init -g handler.go -d internal/server/handler/metric --parseDependency --output ./swagger/
+	@swag fmt
+
 .PHONY: clean
 clean:
 	@echo "\n### $@"

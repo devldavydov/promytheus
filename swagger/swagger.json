@@ -1,0 +1,284 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Yandex Praktikum metrics server API",
+        "title": "Metrics API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/": {
+            "get": {
+                "produces": [
+                    "text/html"
+                ],
+                "summary": "Get all metrics HTML report",
+                "responses": {
+                    "200": {
+                        "description": "Returns metrics report"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    }
+                }
+            }
+        },
+        "/ping": {
+            "get": {
+                "produces": [
+                    "plain/text"
+                ],
+                "summary": "Check storage connection",
+                "responses": {
+                    "200": {
+                        "description": "Check successful"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    }
+                }
+            }
+        },
+        "/update": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Update metric in JSON",
+                "parameters": [
+                    {
+                        "description": "Metric update request",
+                        "name": "message",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/metric.MetricsDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns updated metric",
+                        "schema": {
+                            "$ref": "#/definitions/metric.MetricsDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    },
+                    "501": {
+                        "description": "Metric type not found"
+                    }
+                }
+            }
+        },
+        "/update/{metricType}/{metricName}/{metricValue}": {
+            "post": {
+                "produces": [
+                    "plain/text"
+                ],
+                "summary": "Update metric",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Metric Type",
+                        "name": "metricType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Metric Name",
+                        "name": "metricName",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Metric Value",
+                        "name": "metricValue",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated successfully"
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    },
+                    "501": {
+                        "description": "Metric type not found"
+                    }
+                }
+            }
+        },
+        "/updates": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Update metrics batch in JSON",
+                "parameters": [
+                    {
+                        "description": "Metrics update batch request",
+                        "name": "message",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/metric.MetricsDTO"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns empty array",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "array"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    },
+                    "501": {
+                        "description": "Metric type not found"
+                    }
+                }
+            }
+        },
+        "/value/": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Get metric in JSON",
+                "parameters": [
+                    {
+                        "description": "Metric request",
+                        "name": "message",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/metric.MetricsDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns metric",
+                        "schema": {
+                            "$ref": "#/definitions/metric.MetricsDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "Metric not found"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    },
+                    "501": {
+                        "description": "Metric type not found"
+                    }
+                }
+            }
+        },
+        "/value/{metricType}/{metricName}": {
+            "get": {
+                "produces": [
+                    "plain/text"
+                ],
+                "summary": "Get metric",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Metric Type",
+                        "name": "metricType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Metric Name",
+                        "name": "metricName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns metric"
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "Metric not found"
+                    },
+                    "500": {
+                        "description": "Internal error"
+                    },
+                    "501": {
+                        "description": "Metric type not found"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "metric.MetricsDTO": {
+            "type": "object",
+            "properties": {
+                "delta": {
+                    "description": "metric value if counter",
+                    "type": "integer"
+                },
+                "hash": {
+                    "description": "hash value",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "metric name",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "metric type - gauge|counter",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "metric value if gauge",
+                    "type": "number"
+                }
+            }
+        }
+    }
+}

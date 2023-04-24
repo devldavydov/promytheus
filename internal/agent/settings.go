@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// ServiceSettings represents collecting metrics agent service settings.
 type ServiceSettings struct {
 	ServerAddress  *url.URL
 	PollInterval   time.Duration
@@ -13,6 +14,7 @@ type ServiceSettings struct {
 	RateLimit      int
 }
 
+// NewServiceSettings creates new agent service settings.
 func NewServiceSettings(serverAddress string, pollInterval time.Duration, reportInterval time.Duration, hmacKey string, rateLimit int) (ServiceSettings, error) {
 	url, err := url.ParseRequestURI(serverAddress)
 	if err != nil {

@@ -1,0 +1,186 @@
+basePath: /
+definitions:
+  metric.MetricsDTO:
+    properties:
+      delta:
+        description: metric value if counter
+        type: integer
+      hash:
+        description: hash value
+        type: string
+      id:
+        description: metric name
+        type: string
+      type:
+        description: metric type - gauge|counter
+        type: string
+      value:
+        description: metric value if gauge
+        type: number
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Yandex Praktikum metrics server API
+  title: Metrics API
+  version: "1.0"
+paths:
+  /:
+    get:
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Returns metrics report
+        "500":
+          description: Internal error
+      summary: Get all metrics HTML report
+  /ping:
+    get:
+      produces:
+      - plain/text
+      responses:
+        "200":
+          description: Check successful
+        "500":
+          description: Internal error
+      summary: Check storage connection
+  /update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Metric update request
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/metric.MetricsDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns updated metric
+          schema:
+            $ref: '#/definitions/metric.MetricsDTO'
+        "400":
+          description: Bad request
+        "500":
+          description: Internal error
+        "501":
+          description: Metric type not found
+      summary: Update metric in JSON
+  /update/{metricType}/{metricName}/{metricValue}:
+    post:
+      parameters:
+      - description: Metric Type
+        in: path
+        name: metricType
+        required: true
+        type: string
+      - description: Metric Name
+        in: path
+        name: metricName
+        required: true
+        type: string
+      - description: Metric Value
+        in: path
+        name: metricValue
+        required: true
+        type: string
+      produces:
+      - plain/text
+      responses:
+        "200":
+          description: Updated successfully
+        "400":
+          description: Bad request
+        "500":
+          description: Internal error
+        "501":
+          description: Metric type not found
+      summary: Update metric
+  /updates:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Metrics update batch request
+        in: body
+        name: message
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/metric.MetricsDTO'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns empty array
+          schema:
+            items:
+              type: array
+            type: array
+        "400":
+          description: Bad request
+        "500":
+          description: Internal error
+        "501":
+          description: Metric type not found
+      summary: Update metrics batch in JSON
+  /value/:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Metric request
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/metric.MetricsDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns metric
+          schema:
+            $ref: '#/definitions/metric.MetricsDTO'
+        "400":
+          description: Bad request
+        "404":
+          description: Metric not found
+        "500":
+          description: Internal error
+        "501":
+          description: Metric type not found
+      summary: Get metric in JSON
+  /value/{metricType}/{metricName}:
+    get:
+      parameters:
+      - description: Metric Type
+        in: path
+        name: metricType
+        required: true
+        type: string
+      - description: Metric Name
+        in: path
+        name: metricName
+        required: true
+        type: string
+      produces:
+      - plain/text
+      responses:
+        "200":
+          description: Returns metric
+        "400":
+          description: Bad request
+        "404":
+          description: Metric not found
+        "500":
+          description: Internal error
+        "501":
+          description: Metric type not found
+      summary: Get metric
+swagger: "2.0"

@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// MemStorage represents in-memory metrics storage functionality.
 type MemStorage struct {
 	mu              sync.RWMutex
 	persistSettings PersistSettings

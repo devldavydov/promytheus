@@ -1,3 +1,4 @@
+// Package publisher is a package for different types of metric publishers.
 package publisher
 
 import (
@@ -16,6 +17,7 @@ import (
 
 const _httpClientTimeout = 1 * time.Second
 
+// HTTPPublisher is a HTTP metric publisher.
 type HTTPPublisher struct {
 	serverAddress        *url.URL
 	hmacKey              *string
@@ -26,6 +28,7 @@ type HTTPPublisher struct {
 	failedCounterMetrics metric.Metrics
 }
 
+// NewHTTPPublisher creates new HTTPPublisher.
 func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, metricsChan <-chan metric.Metrics, threadID int, logger *logrus.Logger) *HTTPPublisher {
 	client := &http.Client{
 		Timeout: _httpClientTimeout,

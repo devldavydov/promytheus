@@ -10,10 +10,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// PsUtilCollector is a collector for gopsutil metrics.
 type PsUtilCollector struct{}
 
 var _ collectWorker = (*PsUtilCollector)(nil)
 
+// NewPsUtilCollector creates new PsUtilCollector.
 func NewPsUtilCollector(pollInterval time.Duration, logger *logrus.Logger) *Collector {
 	return &Collector{
 		collectWorker: &PsUtilCollector{},

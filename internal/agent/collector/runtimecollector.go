@@ -9,12 +9,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RuntimeCollector is a collector for runtime metrics.
 type RuntimeCollector struct {
 	pollCnt int64
 }
 
 var _ collectWorker = (*RuntimeCollector)(nil)
 
+// NewRuntimeCollector creates new RuntimeCollector.
 func NewRuntimeCollector(pollInterval time.Duration, logger *logrus.Logger) *Collector {
 	return &Collector{
 		collectWorker: &RuntimeCollector{pollCnt: 0},

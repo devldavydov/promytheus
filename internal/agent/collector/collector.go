@@ -1,3 +1,4 @@
+// Package collector is a package for different types collectors.
 package collector
 
 import (
@@ -14,6 +15,7 @@ type collectWorker interface {
 	collectCleanup()
 }
 
+// Collector is a base struct for different collectors.
 type Collector struct {
 	collectWorker
 	mu             sync.Mutex
@@ -23,6 +25,7 @@ type Collector struct {
 	logger         *logrus.Logger
 }
 
+// Start - runs collector.
 func (c *Collector) Start(ctx context.Context) {
 	ticker := time.NewTicker(c.pollInterval)
 	defer ticker.Stop()
@@ -47,6 +50,7 @@ func (c *Collector) Start(ctx context.Context) {
 	}
 }
 
+// Collect - collects metrics.
 func (c *Collector) Collect() (metric.Metrics, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

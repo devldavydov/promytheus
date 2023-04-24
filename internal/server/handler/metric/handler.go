@@ -1,3 +1,4 @@
+// Package metric is a package for metrics HTTP handlers.
 package metric
 
 import (
@@ -9,6 +10,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
 )
+
+/*
+@Title Metrics API
+@Version 1.0
+@Description Yandex Praktikum metrics server API
+
+@Host      localhost:8080
+@BasePath  /
+*/
 
 var (
 	ErrUnknownMetricType = errors.New("unknowm metric type")
