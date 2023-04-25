@@ -30,7 +30,7 @@ func BenchmarkParseUpdateJSONRequest(b *testing.B) {
 	handler := &MetricHandler{}
 
 	b.Run("parse json gauge", func(b *testing.B) {
-		var v float64 = 123.123
+		v := 123.123
 		req := metric.MetricsDTO{
 			ID:    "test",
 			MType: metric.GaugeTypeName,

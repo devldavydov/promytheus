@@ -1103,7 +1103,7 @@ func ExampleMetricHandler_UpdateMetric_gauge() {
 	client := resty.New()
 
 	// Create request object
-	var v float64 = 123.123
+	v := 123.123
 	req := &metric.MetricsDTO{
 		MType: "gauge",
 		ID:    "Gauge1",
