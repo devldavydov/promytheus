@@ -2,6 +2,7 @@ package metric
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/devldavydov/promytheus/internal/server/mocks"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/devldavydov/promytheus/tests/data"
+	"github.com/go-resty/resty/v2"
 )
 
 func TestGetMetric(t *testing.T) {
@@ -613,4 +615,47 @@ func TestGetAllMetricsPageFromDb(t *testing.T) {
 	}
 
 	runTests(t, tests)
+}
+
+func ExampleMetricHandler_GetMetric() {
+	// Create HTTP client
+	client := resty.New()
+
+	// Send request
+	resp, err := client.R().
+		SetPathParams(map[string]string{
+			"metricType": "gauge",
+			"metricName": "Gauge1",
+		}).
+		Get("http://localhost:8080/value/{metricType}/{metricName}")
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(resp.Body())
+}
+
+func ExampleMetricHandler_GetMetricJSON() {
+	// Create HTTP client
+	client := resty.New()
+
+	// Create request object
+	req := &metric.MetricsDTO{
+		MType: "gauge",
+		ID:    "Gauge1",
+	}
+	var res metric.MetricsDTO
+
+	// Send request
+	_, err := client.R().
+		SetBody(req).
+		SetResult(&res).
+		Post("http://localhost:8080/value/")
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(res)
 }

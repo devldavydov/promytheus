@@ -2,6 +2,7 @@ package metric
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/devldavydov/promytheus/internal/server/mocks"
 	"github.com/devldavydov/promytheus/internal/server/storage"
+	"github.com/go-resty/resty/v2"
 )
 
 func TestUpdateMetric(t *testing.T) {
@@ -1068,4 +1070,56 @@ func TestUpdateMetricJSONBatchWithHashInDb(t *testing.T) {
 		},
 	}
 	runTests(t, tests)
+}
+
+func ExampleMetricHandler_UpdateMetric_counter() {
+	// Create HTTP client
+	client := resty.New()
+
+	// Create request object
+	var v int64 = 123
+	req := &metric.MetricsDTO{
+		MType: "counter",
+		ID:    "Counter1",
+		Delta: &v,
+	}
+	var res metric.MetricsDTO
+
+	// Send request
+	_, err := client.R().
+		SetBody(req).
+		SetResult(&res).
+		Post("http://localhost:8080/update/")
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(res)
+}
+
+func ExampleMetricHandler_UpdateMetric_gauge() {
+	// Create HTTP client
+	client := resty.New()
+
+	// Create request object
+	var v float64 = 123.123
+	req := &metric.MetricsDTO{
+		MType: "gauge",
+		ID:    "Gauge1",
+		Value: &v,
+	}
+	var res metric.MetricsDTO
+
+	// Send request
+	_, err := client.R().
+		SetBody(req).
+		SetResult(&res).
+		Post("http://localhost:8080/update/")
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(res)
 }
