@@ -10,6 +10,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// UpdateMetric set new value for metric.
+//
+//	@Summary	Update metric
+//	@Produce	plain/text
+//	@Param		metricType	path	string	true	"Metric Type"
+//	@Param		metricName	path	string	true	"Metric Name"
+//	@Param		metricValue	path	string	true	"Metric Value"
+//	@Success	200			"Updated successfully"
+//	@Failure	400			"Bad request"
+//	@Failure	500			"Internal error"
+//	@Failure	501			"Metric type not found"
+//	@Router		/update/{metricType}/{metricName}/{metricValue} [post]
 func (handler *MetricHandler) UpdateMetric(rw http.ResponseWriter, req *http.Request) {
 	params, err := handler.parseUpdateRequest(chi.URLParam(req, "metricType"), chi.URLParam(req, "metricName"), chi.URLParam(req, "metricValue"))
 	if err != nil {
@@ -33,6 +45,17 @@ func (handler *MetricHandler) UpdateMetric(rw http.ResponseWriter, req *http.Req
 	_http.CreateStatusResponse(rw, http.StatusOK)
 }
 
+// UpdateMetricJSON set new value for metric in JSON.
+//
+//	@Summary	Update metric in JSON
+//	@Accept		json
+//	@Produce	json
+//	@Param		message	body		metric.MetricsDTO	true	"Metric update request"
+//	@Success	200		{object}	metric.MetricsDTO	"Returns updated metric"
+//	@Failure	400		"Bad request"
+//	@Failure	500		"Internal error"
+//	@Failure	501		"Metric type not found"
+//	@Router		/update [post]
 func (handler *MetricHandler) UpdateMetricJSON(rw http.ResponseWriter, req *http.Request) {
 	var metricReq metric.MetricsDTO
 
@@ -78,6 +101,17 @@ func (handler *MetricHandler) UpdateMetricJSON(rw http.ResponseWriter, req *http
 	_http.CreateJSONResponse(rw, http.StatusOK, metricResp)
 }
 
+// UpdateMetricJSONBatch set new values for batch of metrics in JSON.
+//
+//	@Summary	Update metrics batch in JSON
+//	@Accept		json
+//	@Produce	json
+//	@Param		message	body	[]metric.MetricsDTO	true	"Metrics update batch request"
+//	@Success	200		{array}	array				"Returns empty array"
+//	@Failure	400		"Bad request"
+//	@Failure	500		"Internal error"
+//	@Failure	501		"Metric type not found"
+//	@Router		/updates [post]
 func (handler *MetricHandler) UpdateMetricJSONBatch(rw http.ResponseWriter, req *http.Request) {
 	var metricReqList []metric.MetricsDTO
 
@@ -103,7 +137,7 @@ func (handler *MetricHandler) UpdateMetricJSONBatch(rw http.ResponseWriter, req 
 	}
 
 	// Send JSON response with new values
-	_http.CreateResponse(rw, _http.ContentTypeApplicationJSON, http.StatusOK, "{}")
+	_http.CreateResponse(rw, _http.ContentTypeApplicationJSON, http.StatusOK, "[]")
 }
 
 func (handler *MetricHandler) convertFromParams(items []requestParams) []storage.StorageItem {

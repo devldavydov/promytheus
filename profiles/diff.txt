@@ -1,0 +1,17 @@
+File: metric.test
+Type: alloc_space
+Time: Apr 23, 2023 at 8:32pm (MSK)
+Showing nodes accounting for 1.33GB, 18.09% of 7.35GB total
+Dropped 12 nodes (cum <= 0.04GB)
+      flat  flat%   sum%        cum   cum%
+    1.51GB 20.56% 20.56%     1.51GB 20.56%  github.com/devldavydov/promytheus/internal/server/handler/metric.(*MetricHandler).parseUpdateRequestJSON
+   -0.44GB  6.05% 14.51%     0.98GB 13.38%  github.com/devldavydov/promytheus/internal/server/handler/metric.(*MetricHandler).parseUpdateRequestJSONBatch
+    0.26GB  3.57% 18.09%     0.26GB  3.57%  github.com/devldavydov/promytheus/internal/server/handler/metric.(*MetricHandler).parseUpdateRequest
+         0     0% 18.09%     0.10GB  1.34%  github.com/devldavydov/promytheus/internal/server/handler/metric.BenchmarkParseUpdateJSONRequest.func1
+         0     0% 18.09%    -0.02GB  0.21%  github.com/devldavydov/promytheus/internal/server/handler/metric.BenchmarkParseUpdateJSONRequest.func2
+         0     0% 18.09%    -0.05GB   0.7%  github.com/devldavydov/promytheus/internal/server/handler/metric.BenchmarkParseUpdateRequest.func1
+         0     0% 18.09%     0.31GB  4.28%  github.com/devldavydov/promytheus/internal/server/handler/metric.BenchmarkParseUpdateRequest.func2
+         0     0% 18.09%     0.98GB 13.38%  github.com/devldavydov/promytheus/internal/server/handler/metric.BenchmarkParseUpdateRequestJSONBatch.func1
+         0     0% 18.09%     1.51GB 20.61%  testing.(*B).launch
+         0     0% 18.09%    -0.19GB  2.57%  testing.(*B).run1.func1
+         0     0% 18.09%     1.33GB 18.04%  testing.(*B).runN

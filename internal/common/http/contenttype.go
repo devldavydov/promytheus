@@ -1,3 +1,4 @@
+// Package http provides constants and functions to work with HTTP.
 package http
 
 import "fmt"

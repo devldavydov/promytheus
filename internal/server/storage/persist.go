@@ -2,6 +2,7 @@ package storage
 
 import "time"
 
+// PersistSettings represents options for metrics persist in storage.
 type PersistSettings struct {
 	StoreInterval time.Duration
 	StoreFile     string

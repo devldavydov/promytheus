@@ -14,6 +14,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// GetMetric returns metric.
+//
+//	@Summary	Get metric
+//	@Produce	plain/text
+//	@Param		metricType	path	string	true	"Metric Type"
+//	@Param		metricName	path	string	true	"Metric Name"
+//	@Success	200			"Returns metric"
+//	@Failure	400			"Bad request"
+//	@Failure	404			"Metric not found"
+//	@Failure	500			"Internal error"
+//	@Failure	501			"Metric type not found"
+//	@Router		/value/{metricType}/{metricName} [get]
 func (handler *MetricHandler) GetMetric(rw http.ResponseWriter, req *http.Request) {
 	metricType, metricName := chi.URLParam(req, "metricType"), chi.URLParam(req, "metricName")
 
@@ -45,6 +57,18 @@ func (handler *MetricHandler) GetMetric(rw http.ResponseWriter, req *http.Reques
 	_http.CreateResponse(rw, _http.ContentTypeTextPlain, http.StatusOK, value.String())
 }
 
+// GetMetricJSON returns metric in JSON format.
+//
+//	@Summary	Get metric in JSON
+//	@Accept		json
+//	@Produce	json
+//	@Param		message	body		metric.MetricsDTO	true	"Metric request"
+//	@Success	200		{object}	metric.MetricsDTO	"Returns metric"
+//	@Failure	400		"Bad request"
+//	@Failure	404		"Metric not found"
+//	@Failure	500		"Internal error"
+//	@Failure	501		"Metric type not found"
+//	@Router		/value/ [post]
 func (handler *MetricHandler) GetMetricJSON(rw http.ResponseWriter, req *http.Request) {
 	var metricReq metric.MetricsDTO
 
@@ -95,6 +119,13 @@ func (handler *MetricHandler) GetMetricJSON(rw http.ResponseWriter, req *http.Re
 	_http.CreateJSONResponse(rw, http.StatusOK, metricResp)
 }
 
+// GetMetrics retrieve all metrics HTML report.
+//
+//	@Summary	Get all metrics HTML report
+//	@Produce	html
+//	@Success	200	"Returns metrics report"
+//	@Failure	500	"Internal error"
+//	@Router		/ [get]
 func (handler *MetricHandler) GetMetrics(rw http.ResponseWriter, req *http.Request) {
 	pageTemplate := `
 	<html>

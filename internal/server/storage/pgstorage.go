@@ -11,6 +11,7 @@ import (
 
 const _databaseRequestTimeout = 10 * time.Second
 
+// PgStorage represents PostgreSQL metrics storage functionality.
 type PgStorage struct {
 	db     *sql.DB
 	logger *logrus.Logger

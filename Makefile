@@ -5,11 +5,11 @@ all: clean mock_gen build test
 prepare_env:
 	@echo "\n### $@"
 	@go install github.com/golang/mock/mockgen@v1.6.0
-	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.7.11/devopstest -O ./devopstest
+	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.9.6/devopstest -O ./devopstest
 	@chmod u+x ./devopstest
-	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.7.11/statictest -O ./statictest
+	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.9.6/statictest -O ./statictest
 	@chmod u+x ./statictest
-	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.7.11/random -O ./random
+	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.9.6/random -O ./random
 	@chmod u+x ./random
 
 .PHONY: mock_gen
@@ -143,6 +143,29 @@ test_devops: build
 	 -database-dsn='postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable' \
 	 -key="$${TEMP_FILE}"
 	@go test -v -race ./...
+
+.PHONY: test_bench
+test_bench: build
+	@echo "\n### $@"
+	@mkdir -p profiles
+	@cd internal/server/handler/metric && go test . -run=$^ -bench=. -memprofile=mem.pprof
+	@mv internal/server/handler/metric/mem.pprof profiles/
+
+.PHONY: diff_bench
+diff_bench:
+	@echo "\n### $@"
+	@go tool pprof -top -diff_base=profiles/base.pprof profiles/result.pprof
+
+.PHONY: run_docs
+run_docs:
+	@echo "See docs in http://localhost:8080/pkg/github.com/devldavydov/promytheus/?m=all"
+	@godoc -http=:8080
+
+.PHONY: gen_swagger
+gen_swagger:
+	@echo "\n### $@"
+	@swag init -g handler.go -d internal/server/handler/metric --parseDependency --output ./swagger/
+	@swag fmt
 
 .PHONY: clean
 clean:

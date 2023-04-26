@@ -1,3 +1,4 @@
+// Package middleware is a package for middleware server functionaluty.
 package middleware
 
 import (
@@ -67,6 +68,7 @@ var gzPool = sync.Pool{
 	},
 }
 
+// Gzip is a compression middleware.
 func Gzip(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		if shouldGzipDecodeRequest(r.Header) {

@@ -1,3 +1,4 @@
+// Package agent is the main package for agent service.
 package agent
 
 import (
@@ -11,15 +12,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Collector is an interface for collector functionality.
 type Collector interface {
 	Start(context.Context)
 	Collect() (metric.Metrics, error)
 }
 
+// Publisher is an interface for publisher functionality.
 type Publisher interface {
 	Publish(context.Context)
 }
 
+// Service represents collecting metrics agent service.
 type Service struct {
 	settings                    ServiceSettings
 	logger                      *logrus.Logger
@@ -29,6 +33,7 @@ type Service struct {
 	metricsChan                 chan metric.Metrics
 }
 
+// NewService creates new agent service.
 func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 	collectors := []Collector{
 		collector.NewRuntimeCollector(settings.PollInterval, logger),
@@ -48,6 +53,7 @@ func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 	}
 }
 
+// Start runs agent service with context.
 func (service *Service) Start(ctx context.Context) error {
 	service.logger.Info("Agent service started")
 
