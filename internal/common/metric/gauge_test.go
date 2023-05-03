@@ -37,3 +37,13 @@ func TestGaugeToString(t *testing.T) {
 	assert.Equal(t, "1.235", Gauge(1.23456).String())
 	assert.Equal(t, "1.000", Gauge(1).String())
 }
+
+func TestGaugeTypeName(t *testing.T) {
+	assert.Equal(t, GaugeTypeName, Gauge(123.123).TypeName())
+}
+
+func TestGaugeHmac(t *testing.T) {
+	assert.Equal(t,
+		"2f7e24d0b4f8ff42c7ca771b44e80daaf0460ed08cbccb7228b821a9b5204934",
+		Gauge(123.123).Hmac("foo", "bar"))
+}
