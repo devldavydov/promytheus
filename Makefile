@@ -151,6 +151,13 @@ test_bench: build
 	@cd internal/server/handler/metric && go test . -run=$^ -bench=. -memprofile=mem.pprof
 	@mv internal/server/handler/metric/mem.pprof profiles/
 
+.PHONY: test_cover
+test_cover:
+	@echo "\n### $@"
+	@echo "DON'T FORGET TO START postgres.sh\n"
+	@go test ./... -coverprofile cover.html -v --count 1
+	@go tool cover -html=cover.html
+
 .PHONY: diff_bench
 diff_bench:
 	@echo "\n### $@"
