@@ -30,11 +30,6 @@ func (pg *PgStorageSuite) SetupTest() {
 }
 
 func (pg *PgStorageSuite) TearDownTest() {
-	ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
-	defer cancel()
-
-	_, err := pg.stg.db.ExecContext(ctx, "DELETE FROM metric")
-	require.NoError(pg.T(), err)
 	pg.stg.Close()
 }
 
@@ -112,6 +107,14 @@ func (pg *PgStorageSuite) TestGetCounterMetric() {
 
 func (pg *PgStorageSuite) TestBatchSetAndGet() {
 	gaugeMetric, counterMetric := uuid.NewString(), uuid.NewString()
+
+	pg.Run("empty table", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), _databaseRequestTimeout)
+		defer cancel()
+
+		_, err := pg.stg.db.ExecContext(ctx, "DELETE FROM metric")
+		require.NoError(pg.T(), err)
+	})
 
 	pg.Run("get all - empty list", func() {
 		lst, err := pg.stg.GetAllMetrics()
