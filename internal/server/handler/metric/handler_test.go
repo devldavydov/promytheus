@@ -136,7 +136,8 @@ func doTestRequest(t *testing.T, ts *httptest.Server, testReq testRequest) (int,
 	if !strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		bodyReader = resp.Body
 	} else {
-		gzReader, err := gzip.NewReader(resp.Body)
+		var gzReader *gzip.Reader
+		gzReader, err = gzip.NewReader(resp.Body)
 		require.NoError(t, err)
 		bodyReader = gzReader
 	}

@@ -34,7 +34,8 @@ func (handler *MetricHandler) parseUpdateRequest(metricType, metricName, metricV
 
 	// gauge
 	if metric.GaugeTypeName == metricType {
-		gaugeVal, err := metric.NewGaugeFromString(metricValue)
+		var gaugeVal metric.Gauge
+		gaugeVal, err = metric.NewGaugeFromString(metricValue)
 		if err != nil {
 			return nil, fmt.Errorf("incorrect %s: %w", metric.GaugeTypeName, ErrWrongMetricValue)
 		}
@@ -65,7 +66,8 @@ func (handler *MetricHandler) parseUpdateRequestJSON(metricReq metric.MetricsDTO
 
 	// gauge
 	if metric.GaugeTypeName == metricReq.MType {
-		gaugeVal, err := metric.NewGaugeFromFloatP(metricReq.Value)
+		var gaugeVal metric.Gauge
+		gaugeVal, err = metric.NewGaugeFromFloatP(metricReq.Value)
 		if err != nil {
 			return nil, fmt.Errorf("incorrect %s: %w", metric.GaugeTypeName, ErrWrongMetricValue)
 		}

@@ -2,7 +2,7 @@
 all: clean mock_gen build test
 
 .PHONY: prepare_env
-prepare_env:
+prepare_env: build_mylinter
 	@echo "\n### $@"
 	@go install github.com/golang/mock/mockgen@v1.6.0
 	@wget https://github.com/Yandex-Practicum/go-autotests/releases/download/v0.9.6/devopstest -O ./devopstest
@@ -30,6 +30,11 @@ build_server:
 	@echo "\n### $@"
 	@cd cmd/server && go build .
 
+.PHONY: build_mylinter
+build_mylinter:
+	@echo "\n### $@"
+	@cd cmd/staticlint && go build .
+
 .PHONY: test
 test: test_units test_static test_devops
 
@@ -39,9 +44,10 @@ test_units:
 	@go test ./... -v --count 1
 
 .PHONY: test_static
-test_static:
+test_static: build_mylinter
 	@echo "\n### $@"
 	@go vet -vettool=./statictest ./...
+	@cmd/staticlint/staticlint -json ./...
 
 .PHONY: test_devops
 test_devops: build

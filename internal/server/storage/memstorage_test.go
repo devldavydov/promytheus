@@ -64,11 +64,11 @@ func TestSetMetrics(t *testing.T) {
 	storage := createMemStorageWithoutPersist()
 
 	err := storage.SetMetrics([]StorageItem{
-		{"foo", metric.Gauge(10.1)},
-		{"cnt1", metric.Counter(1)},
-		{"cnt1", metric.Counter(1)},
-		{"cnt1", metric.Counter(1)},
-		{"cnt2", metric.Counter(2)},
+		{MetricName: "foo", Value: metric.Gauge(10.1)},
+		{MetricName: "cnt1", Value: metric.Counter(1)},
+		{MetricName: "cnt1", Value: metric.Counter(1)},
+		{MetricName: "cnt1", Value: metric.Counter(1)},
+		{MetricName: "cnt2", Value: metric.Counter(2)},
 	})
 	assert.NoError(t, err)
 
@@ -76,9 +76,9 @@ func TestSetMetrics(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, result, []StorageItem{
-		{"cnt1", metric.Counter(3)},
-		{"cnt2", metric.Counter(2)},
-		{"foo", metric.Gauge(10.1)},
+		{MetricName: "cnt1", Value: metric.Counter(3)},
+		{MetricName: "cnt2", Value: metric.Counter(2)},
+		{MetricName: "foo", Value: metric.Gauge(10.1)},
 	}, result)
 }
 
@@ -92,10 +92,10 @@ func TestGetAllMetrics(t *testing.T) {
 	items, err := storage.GetAllMetrics()
 	assert.NoError(t, err)
 	assert.Equal(t, []StorageItem{
-		{"bar", metric.Counter(10)},
-		{"foo", metric.Counter(5)},
-		{"buzz", metric.Gauge(1.23456)},
-		{"fuzz", metric.Gauge(0)},
+		{MetricName: "bar", Value: metric.Counter(10)},
+		{MetricName: "foo", Value: metric.Counter(5)},
+		{MetricName: "buzz", Value: metric.Gauge(1.23456)},
+		{MetricName: "fuzz", Value: metric.Gauge(0)},
 	}, items)
 }
 

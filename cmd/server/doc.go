@@ -3,7 +3,7 @@ Metrics server.
 
 Usage:
 
-	cmd/server [flags]
+	server [flags]
 
 Flags:
 

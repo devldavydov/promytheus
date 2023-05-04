@@ -6,8 +6,8 @@ import (
 )
 
 type StorageItem struct {
-	MetricName string
 	Value      metric.MetricValue
+	MetricName string
 }
 
 // Storage is a interface for metrics store functionality.

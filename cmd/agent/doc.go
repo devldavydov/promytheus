@@ -3,7 +3,7 @@ Agent for sending metrics.
 
 Usage:
 
-	cmd/agent [flags]
+	agent [flags]
 
 Flags:
 
