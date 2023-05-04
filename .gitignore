@@ -29,3 +29,6 @@ vendor/
 
 # Log
 *.log
+
+# Test cover
+cover.html

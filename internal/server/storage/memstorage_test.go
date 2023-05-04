@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/devldavydov/promytheus/internal/common/metric"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -153,6 +154,47 @@ func TestSyncIntervalPersistAndRestore(t *testing.T) {
 	assert.Equal(t, metric.Gauge(4.9), gVal)
 }
 
+func TestRestoreFileOpenError(t *testing.T) {
+	logger := logrus.New()
+
+	_, err := NewMemStorage(context.TODO(), logger, NewPersistSettings(0, "/etc/shadow", true))
+	assert.Error(t, err)
+}
+
+func TestRestoreFileNotExists(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	logger := logrus.New()
+
+	_, err := NewMemStorage(ctx, logger, NewPersistSettings(0, uuid.NewString(), true))
+	assert.NoError(t, err)
+}
+
+func TestRestoreFileFormatError(t *testing.T) {
+	logger := logrus.New()
+
+	for _, tt := range []struct {
+		name     string
+		fileData string
+	}{
+		{name: "wrong json format", fileData: "foobar"},
+		{name: "wrong counter format", fileData: `[{"id":"foo","type":"counter","delta":-123}]`},
+	} {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			tmpFile, err := os.CreateTemp("/tmp", "test")
+			assert.NoError(t, err)
+			tmpFile.Write([]byte(tt.fileData))
+			tmpFile.Close()
+			defer os.Remove(tmpFile.Name())
+
+			_, err = NewMemStorage(context.TODO(), logger, NewPersistSettings(0, tmpFile.Name(), true))
+			assert.Error(t, err)
+		})
+	}
+
+}
+
 func TestPing(t *testing.T) {
 	storage := createMemStorageWithoutPersist()
 	assert.True(t, storage.Ping())
@@ -161,5 +203,6 @@ func TestPing(t *testing.T) {
 func createMemStorageWithoutPersist() *MemStorage {
 	logger := logrus.New()
 	storage, _ := NewMemStorage(context.TODO(), logger, NewPersistSettings(0, "", false))
+	defer storage.Close()
 	return storage
 }
