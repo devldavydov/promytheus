@@ -8,9 +8,9 @@ import (
 // ServiceSettings represents collecting metrics agent service settings.
 type ServiceSettings struct {
 	ServerAddress  *url.URL
+	HmacKey        *string
 	PollInterval   time.Duration
 	ReportInterval time.Duration
-	HmacKey        *string
 	RateLimit      int
 }
 

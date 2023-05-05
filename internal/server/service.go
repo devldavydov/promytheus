@@ -17,9 +17,9 @@ import (
 )
 
 type Service struct {
+	logger          *logrus.Logger
 	settings        ServiceSettings
 	shutdownTimeout time.Duration
-	logger          *logrus.Logger
 }
 
 func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger *logrus.Logger) *Service {

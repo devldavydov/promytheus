@@ -22,12 +22,12 @@ const (
 
 type Config struct {
 	Address        string
-	ReportInterval time.Duration
-	PollInterval   time.Duration
 	HmacKey        string
-	RateLimit      int
 	LogLevel       string
 	LogFile        string
+	ReportInterval time.Duration
+	PollInterval   time.Duration
+	RateLimit      int
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {

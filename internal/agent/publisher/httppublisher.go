@@ -23,9 +23,9 @@ type HTTPPublisher struct {
 	hmacKey              *string
 	httpClient           *http.Client
 	metricsChan          <-chan metric.Metrics
-	threadID             int
 	logger               *logrus.Logger
 	failedCounterMetrics metric.Metrics
+	threadID             int
 }
 
 // NewHTTPPublisher creates new HTTPPublisher.

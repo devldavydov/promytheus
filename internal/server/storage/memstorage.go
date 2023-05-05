@@ -15,11 +15,11 @@ import (
 
 // MemStorage represents in-memory metrics storage functionality.
 type MemStorage struct {
-	mu              sync.RWMutex
-	persistSettings PersistSettings
 	gaugeStorage    map[string]metric.Gauge
 	counterStorage  map[string]metric.Counter
 	logger          *logrus.Logger
+	persistSettings PersistSettings
+	mu              sync.RWMutex
 }
 
 var _ Storage = (*MemStorage)(nil)

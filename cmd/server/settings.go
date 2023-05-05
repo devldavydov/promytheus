@@ -26,13 +26,13 @@ const (
 
 type Config struct {
 	Address       string
-	StoreInterval time.Duration
 	StoreFile     string
-	Restore       bool
 	HmacKey       string
 	DatabaseDsn   string
 	LogLevel      string
 	LogFile       string
+	StoreInterval time.Duration
+	Restore       bool
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
