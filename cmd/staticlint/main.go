@@ -14,5 +14,8 @@ func main() {
 	// Staticcheck
 	analyzers = append(analyzers, getStaticcheckAnalyzers()...)
 
+	// 3rd party
+	analyzers = append(analyzers, getThirdPartyAnalyzers()...)
+
 	multichecker.Main(analyzers...)
 }
