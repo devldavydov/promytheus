@@ -30,8 +30,8 @@ build_server:
 	@echo "\n### $@"
 	@cd cmd/server && go build .
 
-.PHONY: build_mylinter
-build_mylinter:
+.PHONY: build_staticlint
+build_staticlint:
 	@echo "\n### $@"
 	@cd cmd/staticlint && go build .
 
@@ -44,7 +44,7 @@ test_units:
 	@go test ./... -v --count 1
 
 .PHONY: test_static
-test_static: build_mylinter
+test_static: build_staticlint
 	@echo "\n### $@"
 	@go vet -vettool=./statictest ./...
 	@cmd/staticlint/staticlint -json ./...
