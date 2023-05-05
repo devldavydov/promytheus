@@ -17,5 +17,8 @@ func main() {
 	// 3rd party
 	analyzers = append(analyzers, getThirdPartyAnalyzers()...)
 
+	// custom
+	analyzers = append(analyzers, customAnalyzers...)
+
 	multichecker.Main(analyzers...)
 }
