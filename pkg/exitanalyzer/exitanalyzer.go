@@ -1,8 +1,8 @@
-package main
+// Exit analyzer checks for use os.Exit in package main "main" function
+package exitanalyzer
 
 import (
 	"go/ast"
-	"go/token"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -38,17 +38,11 @@ func parseFile(pass *analysis.Pass, n *ast.File) {
 			continue
 		}
 
-		// find in main func
-		if pos, ok := findInMainFunc(funcDecl); ok {
-			pass.Reportf(pos, `cannot use "os.Exit" in package main "main" function`)
-			break
-		}
+		findInMainFunc(pass, funcDecl)
 	}
 }
 
-func findInMainFunc(mainFNode *ast.FuncDecl) (token.Pos, bool) {
-	var pos token.Pos
-	var res bool
+func findInMainFunc(pass *analysis.Pass, mainFNode *ast.FuncDecl) {
 	ast.Inspect(mainFNode, func(node ast.Node) bool {
 		fSelExpr, ok := node.(*ast.SelectorExpr)
 		if !ok {
@@ -56,11 +50,8 @@ func findInMainFunc(mainFNode *ast.FuncDecl) (token.Pos, bool) {
 		}
 
 		if fSelExpr.X.(*ast.Ident).Name == "os" && fSelExpr.Sel.Name == "Exit" {
-			pos, res = fSelExpr.Pos(), true
-			return false
+			pass.Reportf(fSelExpr.Pos(), `cannot use "os.Exit" in package main "main" function`)
 		}
 		return true
 	})
-
-	return pos, res
 }

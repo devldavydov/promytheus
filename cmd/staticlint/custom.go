@@ -1,7 +1,10 @@
 package main
 
-import "golang.org/x/tools/go/analysis"
+import (
+	"github.com/devldavydov/promytheus/pkg/exitanalyzer"
+	"golang.org/x/tools/go/analysis"
+)
 
 var customAnalyzers = []*analysis.Analyzer{
-	ExitAnalyzer,
+	exitanalyzer.ExitAnalyzer,
 }
