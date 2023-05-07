@@ -1,3 +1,8 @@
+AGENT_VERSION := 1.0.0
+SERVER_VERSION := 1.0.0
+BUILD_DATE := $(shell date +'%d.%m.%Y %H:%M:%S')
+BUILD_COMMIT := $(shell git rev-parse --short HEAD)
+
 .PHONY: all
 all: clean mock_gen build test
 
@@ -23,12 +28,19 @@ build: build_agent build_server
 .PHONY: build_agent
 build_agent:
 	@echo "\n### $@"
-	@cd cmd/agent && go build .
+	@cd cmd/agent && \
+	 go build \
+	 -ldflags "-X main.buildVersion=$(AGENT_VERSION) -X 'main.buildDate=$(BUILD_DATE)' -X main.buildCommit=$(BUILD_COMMIT)" \
+	 .
 
 .PHONY: build_server
 build_server:
 	@echo "\n### $@"
-	@cd cmd/server && go build .
+	@cd cmd/server && \
+	 go build \
+	 -ldflags "-X main.buildVersion=$(SERVER_VERSION) -X 'main.buildDate=$(BUILD_DATE)' -X main.buildCommit=$(BUILD_COMMIT)" \
+	 .
+
 
 .PHONY: build_staticlint
 build_staticlint:
@@ -41,6 +53,7 @@ test: test_units test_static test_devops
 .PHONY: test_units
 test_units: 
 	@echo "\n### $@"
+	@echo "DON'T FORGET TO START postgres.sh\n"
 	@go test ./... -v --count 1
 
 .PHONY: test_static
