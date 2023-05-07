@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/devldavydov/promytheus/internal/common/metric"
@@ -16,7 +17,7 @@ import (
 
 var logger = logrus.New()
 
-const databaseDsn = "postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable"
+const _envTestDatabaseDsn = "TEST_DATABASE_DSN"
 
 type PgStorageSuite struct {
 	suite.Suite
@@ -25,7 +26,7 @@ type PgStorageSuite struct {
 
 func (pg *PgStorageSuite) SetupTest() {
 	var err error
-	pg.stg, err = NewPgStorage(databaseDsn, logger)
+	pg.stg, err = NewPgStorage(os.Getenv(_envTestDatabaseDsn), logger)
 	require.NoError(pg.T(), err)
 }
 
@@ -148,6 +149,11 @@ func (pg *PgStorageSuite) TestBatchSetAndGet() {
 }
 
 func TestPgStorageSuite(t *testing.T) {
+	_, ok := os.LookupEnv(_envTestDatabaseDsn)
+	if !ok {
+		t.Skip("Test environment not set")
+		return
+	}
 	suite.Run(t, new(PgStorageSuite))
 }
 

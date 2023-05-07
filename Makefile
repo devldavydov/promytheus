@@ -54,7 +54,8 @@ test: test_units test_static test_devops
 test_units: 
 	@echo "\n### $@"
 	@echo "DON'T FORGET TO START postgres.sh\n"
-	@go test ./... -v --count 1
+	@export TEST_DATABASE_DSN=postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable && \
+	 go test ./... -v --count 1
 
 .PHONY: test_static
 test_static: build_staticlint
