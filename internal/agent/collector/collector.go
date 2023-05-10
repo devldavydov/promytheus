@@ -18,11 +18,11 @@ type collectWorker interface {
 // Collector is a base struct for different collectors.
 type Collector struct {
 	collectWorker
-	mu             sync.Mutex
-	name           string
-	pollInterval   time.Duration
 	currentMetrics metric.Metrics
 	logger         *logrus.Logger
+	name           string
+	pollInterval   time.Duration
+	mu             sync.Mutex
 }
 
 // Start - runs collector.

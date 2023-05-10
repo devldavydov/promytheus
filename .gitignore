@@ -15,10 +15,7 @@ random
 *.out
 
 # Binaries
-cmd/agent/main
-cmd/agent/agent
-cmd/server/main
-cmd/server/server
+bin/
 
 # Dependency directories (remove the comment below to include it)
 vendor/
@@ -29,3 +26,6 @@ vendor/
 
 # Log
 *.log
+
+# Test cover
+cover.html

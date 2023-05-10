@@ -10,7 +10,14 @@ import (
 	"syscall"
 
 	"github.com/devldavydov/promytheus/internal/agent"
+	"github.com/devldavydov/promytheus/internal/common/info"
 	_log "github.com/devldavydov/promytheus/internal/common/log"
+)
+
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
 )
 
 func main() {
@@ -20,6 +27,9 @@ func main() {
 }
 
 func run() error {
+	appVer := info.FormatVersion(buildVersion, buildDate, buildCommit)
+	fmt.Println(appVer)
+
 	config, err := LoadConfig(*flag.CommandLine, os.Args[1:])
 	if err != nil {
 		return fmt.Errorf("failed to load flag and ENV settings: %w", err)
@@ -36,6 +46,7 @@ func run() error {
 		return fmt.Errorf("failed to create agent settings: %w", err)
 	}
 
+	logger.Info(appVer)
 	agentService := agent.NewService(agentSettings, logger)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

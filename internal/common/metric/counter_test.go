@@ -37,3 +37,13 @@ func TestCounterToIntP(t *testing.T) {
 func TestCounterToString(t *testing.T) {
 	assert.Equal(t, "123", Counter(123).String())
 }
+
+func TestCounterTypeName(t *testing.T) {
+	assert.Equal(t, CounterTypeName, Counter(123).TypeName())
+}
+
+func TestCounterHmac(t *testing.T) {
+	assert.Equal(t,
+		"83c6f47b3960e54841ddd4e46f925289d9bec6d80faad307c80d0987db15df62",
+		Counter(123).Hmac("foo", "bar"))
+}

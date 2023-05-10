@@ -25,12 +25,12 @@ type Publisher interface {
 
 // Service represents collecting metrics agent service.
 type Service struct {
-	settings                    ServiceSettings
 	logger                      *logrus.Logger
 	failedPublishCounterMetrics metric.Metrics
-	collectors                  []Collector
 	publisherFactory            func(threadID int) Publisher
 	metricsChan                 chan metric.Metrics
+	collectors                  []Collector
+	settings                    ServiceSettings
 }
 
 // NewService creates new agent service.

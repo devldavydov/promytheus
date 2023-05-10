@@ -3,11 +3,11 @@ package server
 import "github.com/devldavydov/promytheus/internal/server/storage"
 
 type ServiceSettings struct {
-	ServerAddress   string
-	ServerPort      int
 	HmacKey         *string
+	ServerAddress   string
 	DatabaseDsn     string
 	PersistSettings storage.PersistSettings
+	ServerPort      int
 }
 
 func NewServiceSettings(serverAddress string, serverPort int, hmacKey string, databaseDsn string, persistSettimgs storage.PersistSettings) ServiceSettings {

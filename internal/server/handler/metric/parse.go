@@ -32,8 +32,10 @@ func (handler *MetricHandler) parseUpdateRequest(metricType, metricName, metricV
 		return nil, err
 	}
 
+	// gauge
 	if metric.GaugeTypeName == metricType {
-		gaugeVal, err := metric.NewGaugeFromString(metricValue)
+		var gaugeVal metric.Gauge
+		gaugeVal, err = metric.NewGaugeFromString(metricValue)
 		if err != nil {
 			return nil, fmt.Errorf("incorrect %s: %w", metric.GaugeTypeName, ErrWrongMetricValue)
 		}
@@ -42,19 +44,18 @@ func (handler *MetricHandler) parseUpdateRequest(metricType, metricName, metricV
 			metricName: metricName,
 			gaugeValue: gaugeVal,
 		}, nil
-	} else if metric.CounterTypeName == metricType {
-		counterVal, err := metric.NewCounterFromString(metricValue)
-		if err != nil {
-			return nil, fmt.Errorf("incorrect %s: %w", metric.CounterTypeName, ErrWrongMetricValue)
-		}
-		return &requestParams{
-			metricType:   metric.CounterTypeName,
-			metricName:   metricName,
-			counterValue: counterVal,
-		}, nil
 	}
 
-	return nil, ErrUnknownMetricType
+	// counter
+	counterVal, err := metric.NewCounterFromString(metricValue)
+	if err != nil {
+		return nil, fmt.Errorf("incorrect %s: %w", metric.CounterTypeName, ErrWrongMetricValue)
+	}
+	return &requestParams{
+		metricType:   metric.CounterTypeName,
+		metricName:   metricName,
+		counterValue: counterVal,
+	}, nil
 }
 
 func (handler *MetricHandler) parseUpdateRequestJSON(metricReq metric.MetricsDTO) (*requestParams, error) {
@@ -63,8 +64,10 @@ func (handler *MetricHandler) parseUpdateRequestJSON(metricReq metric.MetricsDTO
 		return nil, err
 	}
 
+	// gauge
 	if metric.GaugeTypeName == metricReq.MType {
-		gaugeVal, err := metric.NewGaugeFromFloatP(metricReq.Value)
+		var gaugeVal metric.Gauge
+		gaugeVal, err = metric.NewGaugeFromFloatP(metricReq.Value)
 		if err != nil {
 			return nil, fmt.Errorf("incorrect %s: %w", metric.GaugeTypeName, ErrWrongMetricValue)
 		}
@@ -78,24 +81,23 @@ func (handler *MetricHandler) parseUpdateRequestJSON(metricReq metric.MetricsDTO
 			metricName: metricReq.ID,
 			gaugeValue: gaugeVal,
 		}, nil
-	} else if metric.CounterTypeName == metricReq.MType {
-		counterVal, err := metric.NewCounterFromIntP(metricReq.Delta)
-		if err != nil {
-			return nil, fmt.Errorf("incorrect %s: %w", metric.CounterTypeName, ErrWrongMetricValue)
-		}
-
-		if err = handler.hmacCheck(metricReq, counterVal); err != nil {
-			return nil, fmt.Errorf("incorrect %s: %w", metric.CounterTypeName, err)
-		}
-
-		return &requestParams{
-			metricType:   metric.CounterTypeName,
-			metricName:   metricReq.ID,
-			counterValue: counterVal,
-		}, nil
 	}
 
-	return nil, ErrUnknownMetricType
+	// counter
+	counterVal, err := metric.NewCounterFromIntP(metricReq.Delta)
+	if err != nil {
+		return nil, fmt.Errorf("incorrect %s: %w", metric.CounterTypeName, ErrWrongMetricValue)
+	}
+
+	if err = handler.hmacCheck(metricReq, counterVal); err != nil {
+		return nil, fmt.Errorf("incorrect %s: %w", metric.CounterTypeName, err)
+	}
+
+	return &requestParams{
+		metricType:   metric.CounterTypeName,
+		metricName:   metricReq.ID,
+		counterValue: counterVal,
+	}, nil
 }
 
 func (handler *MetricHandler) parseUpdateRequestJSONBatch(metricReqList []metric.MetricsDTO) ([]requestParams, error) {

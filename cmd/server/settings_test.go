@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"testing"
 	"time"
 
@@ -129,5 +130,24 @@ func TestServerSettingsAdaptCustomError(t *testing.T) {
 
 		_, err = ServerSettingsAdapt(config)
 		assert.Error(t, err)
+	}
+}
+
+func TestServerSettingsCastEnvError(t *testing.T) {
+	for i, tt := range []struct {
+		envVarName string
+		envVarVal  string
+	}{
+		{envVarName: "STORE_INTERVAL", envVarVal: "foobar"},
+		{envVarName: "RESTORE", envVarVal: "foobar"},
+	} {
+		tt := tt
+		i := i
+		t.Run(fmt.Sprintf("check%d", i), func(t *testing.T) {
+			t.Setenv(tt.envVarName, tt.envVarVal)
+			testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
+			_, err := LoadConfig(*testFlagSet, []string{})
+			assert.Error(t, err)
+		})
 	}
 }

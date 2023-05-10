@@ -223,6 +223,20 @@ func TestGetJSONMetric(t *testing.T) {
 			},
 		},
 		{
+			name: "get JSON metric: bad request",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/value/",
+				body:        bodyStringReader(`"id": "foo", "type": "gauge"}`),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+			},
+			resp: testResponse{
+				code:        http.StatusBadRequest,
+				body:        http.StatusText(http.StatusBadRequest),
+				contentType: _http.ContentTypeTextPlain,
+			},
+		},
+		{
 			name: "get JSON metric: unknown metric type",
 			req: testRequest{
 				method:      http.MethodPost,

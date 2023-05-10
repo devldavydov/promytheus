@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/url"
 	"testing"
 	"time"
@@ -112,5 +113,24 @@ func TestAgentSettingsAdaptCustomError(t *testing.T) {
 
 	_, err = AgentSettingsAdapt(config)
 	assert.Error(t, err)
+}
 
+func TestAgentSettingsCastEnvError(t *testing.T) {
+	for i, tt := range []struct {
+		envVarName string
+		envVarVal  string
+	}{
+		{envVarName: "REPORT_INTERVAL", envVarVal: "foobar"},
+		{envVarName: "POLL_INTERVAL", envVarVal: "foobar"},
+		{envVarName: "RATE_LIMIT", envVarVal: "foobar"},
+	} {
+		tt := tt
+		i := i
+		t.Run(fmt.Sprintf("check%d", i), func(t *testing.T) {
+			t.Setenv(tt.envVarName, tt.envVarVal)
+			testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
+			_, err := LoadConfig(*testFlagSet, []string{})
+			assert.Error(t, err)
+		})
+	}
 }

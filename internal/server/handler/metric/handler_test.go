@@ -23,30 +23,30 @@ import (
 )
 
 type testResponse struct {
-	code        int
+	headers     map[string][]string
 	body        string
 	contentType string
-	headers     map[string][]string
+	code        int
 }
 
 type testRequest struct {
-	method      string
-	url         string
 	body        io.Reader
 	contentType *string
 	hmacKey     *string
 	headers     map[string][]string
+	method      string
+	url         string
 }
 
 type testItem struct {
-	name         string
-	xfail        bool
-	req          testRequest
-	resp         testResponse
-	dbStg        bool
 	stgInitFunc  func(storage.Storage)
 	stgCheckFunc func() []storage.StorageItem
 	stgMockFunc  func(*mocks.MockStorage)
+	req          testRequest
+	name         string
+	resp         testResponse
+	xfail        bool
+	dbStg        bool
 }
 
 func runTests(t *testing.T, tests []testItem) {
@@ -136,7 +136,8 @@ func doTestRequest(t *testing.T, ts *httptest.Server, testReq testRequest) (int,
 	if !strings.Contains(resp.Header.Get("Content-Encoding"), "gzip") {
 		bodyReader = resp.Body
 	} else {
-		gzReader, err := gzip.NewReader(resp.Body)
+		var gzReader *gzip.Reader
+		gzReader, err = gzip.NewReader(resp.Body)
 		require.NoError(t, err)
 		bodyReader = gzReader
 	}

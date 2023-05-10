@@ -15,11 +15,11 @@ import (
 
 // MemStorage represents in-memory metrics storage functionality.
 type MemStorage struct {
-	mu              sync.RWMutex
-	persistSettings PersistSettings
 	gaugeStorage    map[string]metric.Gauge
 	counterStorage  map[string]metric.Counter
 	logger          *logrus.Logger
+	persistSettings PersistSettings
+	mu              sync.RWMutex
 }
 
 var _ Storage = (*MemStorage)(nil)
@@ -226,8 +226,8 @@ func (storage *MemStorage) persistIntervalThread(ctx context.Context) {
 
 func mapToItems[V metric.MetricValue](m map[string]V) []StorageItem {
 	result := make([]StorageItem, 0, len(m))
-	for k, v := range m {
-		result = append(result, StorageItem{k, v})
+	for name, val := range m {
+		result = append(result, StorageItem{MetricName: name, Value: val})
 	}
 	return result
 }
