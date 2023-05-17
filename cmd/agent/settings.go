@@ -18,16 +18,18 @@ const (
 	_defaultConfigLogFile        = "agent.log"
 	_defaultHmacKey              = ""
 	_defaultRateLimit            = 2
+	_defaultCryptoPubKeyPath     = ""
 )
 
 type Config struct {
-	Address        string
-	HmacKey        string
-	LogLevel       string
-	LogFile        string
-	ReportInterval time.Duration
-	PollInterval   time.Duration
-	RateLimit      int
+	Address          string
+	HmacKey          string
+	LogLevel         string
+	LogFile          string
+	ReportInterval   time.Duration
+	PollInterval     time.Duration
+	RateLimit        int
+	CryptoPubKeyPath string
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
@@ -39,6 +41,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.DurationVar(&config.PollInterval, "p", _defaultConfigPollInterval, "poll interval")
 	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
 	flagSet.IntVar(&config.RateLimit, "l", _defaultRateLimit, "rate limit")
+	flagSet.StringVar(&config.CryptoPubKeyPath, "crypto-key", _defaultCryptoPubKeyPath, "crypto public key path")
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flagSet.PrintDefaults()
@@ -73,6 +76,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.CryptoPubKeyPath, err = env.GetVariable("CRYPTO_KEY", env.CastString, config.CryptoPubKeyPath)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -92,7 +100,8 @@ func AgentSettingsAdapt(config *Config) (agent.ServiceSettings, error) {
 		config.PollInterval,
 		config.ReportInterval,
 		config.HmacKey,
-		config.RateLimit)
+		config.RateLimit,
+		config.CryptoPubKeyPath)
 	if err != nil {
 		return agent.ServiceSettings{}, err
 	}

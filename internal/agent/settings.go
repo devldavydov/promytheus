@@ -7,15 +7,23 @@ import (
 
 // ServiceSettings represents collecting metrics agent service settings.
 type ServiceSettings struct {
-	ServerAddress  *url.URL
-	HmacKey        *string
-	PollInterval   time.Duration
-	ReportInterval time.Duration
-	RateLimit      int
+	ServerAddress    *url.URL
+	HmacKey          *string
+	PollInterval     time.Duration
+	ReportInterval   time.Duration
+	RateLimit        int
+	CryptoPubKeyPath *string
 }
 
 // NewServiceSettings creates new agent service settings.
-func NewServiceSettings(serverAddress string, pollInterval time.Duration, reportInterval time.Duration, hmacKey string, rateLimit int) (ServiceSettings, error) {
+func NewServiceSettings(
+	serverAddress string,
+	pollInterval time.Duration,
+	reportInterval time.Duration,
+	hmacKey string,
+	rateLimit int,
+	cryptoPubKeyPath string,
+) (ServiceSettings, error) {
 	url, err := url.ParseRequestURI(serverAddress)
 	if err != nil {
 		return ServiceSettings{}, err
@@ -26,11 +34,17 @@ func NewServiceSettings(serverAddress string, pollInterval time.Duration, report
 		hmac = &hmacKey
 	}
 
+	var pubKeyPath *string
+	if cryptoPubKeyPath != "" {
+		pubKeyPath = &cryptoPubKeyPath
+	}
+
 	return ServiceSettings{
-		ServerAddress:  url,
-		PollInterval:   pollInterval,
-		ReportInterval: reportInterval,
-		HmacKey:        hmac,
-		RateLimit:      rateLimit,
+		ServerAddress:    url,
+		PollInterval:     pollInterval,
+		ReportInterval:   reportInterval,
+		HmacKey:          hmac,
+		RateLimit:        rateLimit,
+		CryptoPubKeyPath: pubKeyPath,
 	}, nil
 }

@@ -22,17 +22,19 @@ const (
 	_defaultConfigRestore       = true
 	_defaultHmacKey             = ""
 	_defaultDatabaseDsn         = ""
+	_defaultCryptoPrivKeyPath   = ""
 )
 
 type Config struct {
-	Address       string
-	StoreFile     string
-	HmacKey       string
-	DatabaseDsn   string
-	LogLevel      string
-	LogFile       string
-	StoreInterval time.Duration
-	Restore       bool
+	Address           string
+	StoreFile         string
+	HmacKey           string
+	DatabaseDsn       string
+	LogLevel          string
+	LogFile           string
+	StoreInterval     time.Duration
+	Restore           bool
+	CryptoPrivKeyPath string
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
@@ -46,6 +48,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.BoolVar(&config.Restore, "r", _defaultConfigRestore, "restore")
 	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
 	flagSet.StringVar(&config.DatabaseDsn, "d", _defaultDatabaseDsn, "database dsn")
+	flagSet.StringVar(&config.CryptoPrivKeyPath, "crypto-key", _defaultCryptoPrivKeyPath, "crypto private key path")
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flagSet.PrintDefaults()
@@ -86,6 +89,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.CryptoPrivKeyPath, err = env.GetVariable("CRYPTO_KEY", env.CastString, config.CryptoPrivKeyPath)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -112,5 +120,11 @@ func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
 	}
 
 	persistSettings := storage.NewPersistSettings(config.StoreInterval, config.StoreFile, config.Restore)
-	return server.NewServiceSettings(address, port, config.HmacKey, config.DatabaseDsn, persistSettings), nil
+	return server.NewServiceSettings(
+		address,
+		port,
+		config.HmacKey,
+		config.DatabaseDsn,
+		persistSettings,
+		config.CryptoPrivKeyPath), nil
 }
