@@ -24,7 +24,10 @@ func TestEncryptDecrypt(t *testing.T) {
 	privKey, err := PrivateKeyFromFile(privKeyPath)
 	assert.NoError(t, err)
 
-	testMsg := []byte("Hello world!")
+	var testMsg []byte
+	for i := 0; i < 10000; i++ {
+		testMsg = append(testMsg, []byte("Hello World!")...)
+	}
 
 	encrMsg, err := EncryptWithPublicKey(testMsg, pubKey)
 	assert.NoError(t, err)

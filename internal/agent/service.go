@@ -3,11 +3,13 @@ package agent
 
 import (
 	"context"
+	"crypto/rsa"
 	"sync"
 	"time"
 
 	"github.com/devldavydov/promytheus/internal/agent/collector"
 	"github.com/devldavydov/promytheus/internal/agent/publisher"
+	"github.com/devldavydov/promytheus/internal/common/cipher"
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/sirupsen/logrus"
 )
@@ -27,7 +29,7 @@ type Publisher interface {
 type Service struct {
 	logger                      *logrus.Logger
 	failedPublishCounterMetrics metric.Metrics
-	publisherFactory            func(threadID int) Publisher
+	publisherFactory            func(threadID int, cryptoPubKey *rsa.PublicKey) Publisher
 	metricsChan                 chan metric.Metrics
 	collectors                  []Collector
 	settings                    ServiceSettings
@@ -47,8 +49,8 @@ func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 		logger:      logger,
 		collectors:  collectors,
 		metricsChan: ch,
-		publisherFactory: func(threadID int) Publisher {
-			return publisher.NewHTTPPublisher(settings.ServerAddress, settings.HmacKey, ch, threadID, logger)
+		publisherFactory: func(threadID int, cryptoPubKey *rsa.PublicKey) Publisher {
+			return publisher.NewHTTPPublisher(settings.ServerAddress, settings.HmacKey, ch, threadID, cryptoPubKey, logger)
 		},
 	}
 }
@@ -56,6 +58,11 @@ func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 // Start runs agent service with context.
 func (service *Service) Start(ctx context.Context) error {
 	service.logger.Info("Agent service started")
+
+	cryptoPubKey, err := service.loadCryptoPubKey()
+	if err != nil {
+		return err
+	}
 
 	var wg sync.WaitGroup
 
@@ -71,7 +78,7 @@ func (service *Service) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func(ctx context.Context, threadID int) {
 			defer wg.Done()
-			service.publisherFactory(threadID).Publish(ctx)
+			service.publisherFactory(threadID, cryptoPubKey).Publish(ctx)
 		}(ctx, i+1)
 	}
 
@@ -105,4 +112,11 @@ func (service *Service) startMainLoop(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (service *Service) loadCryptoPubKey() (*rsa.PublicKey, error) {
+	if service.settings.CryptoPubKeyPath == nil {
+		return nil, nil
+	}
+	return cipher.PublicKeyFromFile(*service.settings.CryptoPubKeyPath)
 }

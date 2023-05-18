@@ -41,3 +41,9 @@ func (d *DecReader) Read(p []byte) (n int, err error) {
 
 	return d.decBuf.Read(p)
 }
+
+func (d *DecReader) Reset(inp io.Reader) {
+	d.inp = inp
+	d.decBuf.Reset()
+	d.decrypted = false
+}

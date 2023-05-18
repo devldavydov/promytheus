@@ -4,11 +4,11 @@ import "github.com/devldavydov/promytheus/internal/server/storage"
 
 type ServiceSettings struct {
 	HmacKey           *string
+	CryptoPrivKeyPath *string
 	ServerAddress     string
 	DatabaseDsn       string
 	PersistSettings   storage.PersistSettings
 	ServerPort        int
-	CryptoPrivKeyPath *string
 }
 
 func NewServiceSettings(

@@ -32,9 +32,9 @@ type Config struct {
 	DatabaseDsn       string
 	LogLevel          string
 	LogFile           string
+	CryptoPrivKeyPath string
 	StoreInterval     time.Duration
 	Restore           bool
-	CryptoPrivKeyPath string
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {

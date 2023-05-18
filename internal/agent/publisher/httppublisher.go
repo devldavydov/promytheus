@@ -4,13 +4,17 @@ package publisher
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
+	"github.com/devldavydov/promytheus/internal/common/cipher"
 	_http "github.com/devldavydov/promytheus/internal/common/http"
+	"github.com/devldavydov/promytheus/internal/common/io"
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/sirupsen/logrus"
 )
@@ -25,13 +29,30 @@ type HTTPPublisher struct {
 	metricsChan          <-chan metric.Metrics
 	logger               *logrus.Logger
 	failedCounterMetrics metric.Metrics
+	bufPool              *sync.Pool
 	threadID             int
 }
 
 // NewHTTPPublisher creates new HTTPPublisher.
-func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, metricsChan <-chan metric.Metrics, threadID int, logger *logrus.Logger) *HTTPPublisher {
+func NewHTTPPublisher(
+	serverAddress *url.URL,
+	hmacKey *string,
+	metricsChan <-chan metric.Metrics,
+	threadID int,
+	cryptoPubKey *rsa.PublicKey,
+	logger *logrus.Logger,
+) *HTTPPublisher {
 	client := &http.Client{
 		Timeout: _httpClientTimeout,
+	}
+
+	bufPool := &sync.Pool{
+		New: func() interface{} {
+			if cryptoPubKey == nil {
+				return bytes.NewBuffer([]byte{})
+			}
+			return cipher.NewEncBuffer(cryptoPubKey)
+		},
 	}
 
 	return &HTTPPublisher{
@@ -40,6 +61,7 @@ func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, metricsChan <-cha
 		httpClient:    client,
 		metricsChan:   metricsChan,
 		threadID:      threadID,
+		bufPool:       bufPool,
 		logger:        logger,
 	}
 }
@@ -86,13 +108,16 @@ func (httpPublisher *HTTPPublisher) processMetrics(ctx context.Context, metricsL
 }
 
 func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO) error {
-	var buf bytes.Buffer
-	json.NewEncoder(&buf).Encode(metricReq)
+	buf := httpPublisher.bufPool.Get().(io.ReadWriteReseter)
+	buf.Reset()
+	defer httpPublisher.bufPool.Put(buf)
+
+	json.NewEncoder(buf).Encode(metricReq)
 
 	request, err := http.NewRequest(
 		http.MethodPost,
 		httpPublisher.serverAddress.JoinPath("updates/").String(),
-		&buf)
+		buf)
 	if err != nil {
 		return fmt.Errorf("publisher[%d] failed to create request: %w", httpPublisher.threadID, err)
 	}

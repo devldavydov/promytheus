@@ -9,10 +9,10 @@ import (
 // Write appends internal buffer witj plain data.
 // Read returns encrypted data.
 type EncBuffer struct {
+	pubKey  *rsa.PublicKey
 	buf     bytes.Buffer
 	encBuf  bytes.Buffer
 	encoded bool
-	pubKey  *rsa.PublicKey
 }
 
 func NewEncBuffer(pubKey *rsa.PublicKey) *EncBuffer {
@@ -38,4 +38,10 @@ func (e *EncBuffer) Read(p []byte) (n int, err error) {
 	}
 
 	return e.encBuf.Read(p)
+}
+
+func (e *EncBuffer) Reset() {
+	e.buf.Reset()
+	e.encBuf.Reset()
+	e.encoded = false
 }

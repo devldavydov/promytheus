@@ -99,15 +99,7 @@ func PublicKeyToBytes(pub *rsa.PublicKey) ([]byte, error) {
 // BytesToPrivateKey converts slice of bytes to RSA private key.
 func BytesToPrivateKey(priv []byte) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode(priv)
-	enc := x509.IsEncryptedPEMBlock(block)
 	b := block.Bytes
-	var err error
-	if enc {
-		b, err = x509.DecryptPEMBlock(block, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
 	key, err := x509.ParsePKCS1PrivateKey(b)
 	if err != nil {
 		return nil, err
@@ -118,15 +110,7 @@ func BytesToPrivateKey(priv []byte) (*rsa.PrivateKey, error) {
 // BytesToPublicKey converts slice of bytes to RSA public key.
 func BytesToPublicKey(pub []byte) (*rsa.PublicKey, error) {
 	block, _ := pem.Decode(pub)
-	enc := x509.IsEncryptedPEMBlock(block)
 	b := block.Bytes
-	var err error
-	if enc {
-		b, err = x509.DecryptPEMBlock(block, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
 	ifc, err := x509.ParsePKIXPublicKey(b)
 	if err != nil {
 		return nil, err
@@ -141,19 +125,47 @@ func BytesToPublicKey(pub []byte) (*rsa.PublicKey, error) {
 // EncryptWithPublicKey encrypts slice of bytes with RSA public key.
 func EncryptWithPublicKey(msg []byte, pub *rsa.PublicKey) ([]byte, error) {
 	hash := sha512.New()
-	ciphertext, err := rsa.EncryptOAEP(hash, rand.Reader, pub, msg, nil)
-	if err != nil {
-		return nil, err
+	msgLen := len(msg)
+	step := pub.Size() - 2*hash.Size() - 2
+	var ciphertext []byte
+
+	for start := 0; start < msgLen; start += step {
+		finish := start + step
+		if finish > msgLen {
+			finish = msgLen
+		}
+
+		encryptedBlockBytes, err := rsa.EncryptOAEP(hash, rand.Reader, pub, msg[start:finish], nil)
+		if err != nil {
+			return nil, err
+		}
+
+		ciphertext = append(ciphertext, encryptedBlockBytes...)
 	}
+
 	return ciphertext, nil
 }
 
 // DecryptWithPrivateKey decrypts slice of bytes with RSA private key.
 func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
 	hash := sha512.New()
-	plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, ciphertext, nil)
-	if err != nil {
-		return nil, err
+	msgLen := len(ciphertext)
+	step := priv.PublicKey.Size()
+	var plaintext []byte
+
+	for start := 0; start < msgLen; start += step {
+		finish := start + step
+		if finish > msgLen {
+			finish = msgLen
+		}
+
+		decryptedBlockBytes, err := rsa.DecryptOAEP(hash, rand.Reader, priv, ciphertext[start:finish], nil)
+		if err != nil {
+			return nil, err
+		}
+
+		plaintext = append(plaintext, decryptedBlockBytes...)
 	}
+
 	return plaintext, nil
 }

@@ -26,10 +26,10 @@ type Config struct {
 	HmacKey          string
 	LogLevel         string
 	LogFile          string
+	CryptoPubKeyPath string
 	ReportInterval   time.Duration
 	PollInterval     time.Duration
 	RateLimit        int
-	CryptoPubKeyPath string
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {

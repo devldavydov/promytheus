@@ -9,10 +9,10 @@ import (
 type ServiceSettings struct {
 	ServerAddress    *url.URL
 	HmacKey          *string
+	CryptoPubKeyPath *string
 	PollInterval     time.Duration
 	ReportInterval   time.Duration
 	RateLimit        int
-	CryptoPubKeyPath *string
 }
 
 // NewServiceSettings creates new agent service settings.
