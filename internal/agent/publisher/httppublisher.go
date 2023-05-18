@@ -7,14 +7,13 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 
 	"github.com/devldavydov/promytheus/internal/common/cipher"
 	_http "github.com/devldavydov/promytheus/internal/common/http"
-	"github.com/devldavydov/promytheus/internal/common/io"
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/sirupsen/logrus"
 )
@@ -29,7 +28,7 @@ type HTTPPublisher struct {
 	metricsChan          <-chan metric.Metrics
 	logger               *logrus.Logger
 	failedCounterMetrics metric.Metrics
-	bufPool              *sync.Pool
+	bufFactory           func() io.ReadWriter
 	threadID             int
 }
 
@@ -46,13 +45,11 @@ func NewHTTPPublisher(
 		Timeout: _httpClientTimeout,
 	}
 
-	bufPool := &sync.Pool{
-		New: func() interface{} {
-			if cryptoPubKey == nil {
-				return bytes.NewBuffer([]byte{})
-			}
-			return cipher.NewEncBuffer(cryptoPubKey)
-		},
+	bufFactory := func() io.ReadWriter {
+		if cryptoPubKey == nil {
+			return bytes.NewBuffer([]byte{})
+		}
+		return cipher.NewEncBuffer(cryptoPubKey)
 	}
 
 	return &HTTPPublisher{
@@ -61,7 +58,7 @@ func NewHTTPPublisher(
 		httpClient:    client,
 		metricsChan:   metricsChan,
 		threadID:      threadID,
-		bufPool:       bufPool,
+		bufFactory:    bufFactory,
 		logger:        logger,
 	}
 }
@@ -108,10 +105,7 @@ func (httpPublisher *HTTPPublisher) processMetrics(ctx context.Context, metricsL
 }
 
 func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO) error {
-	buf := httpPublisher.bufPool.Get().(io.ReadWriteReseter)
-	buf.Reset()
-	defer httpPublisher.bufPool.Put(buf)
-
+	buf := httpPublisher.bufFactory()
 	json.NewEncoder(buf).Encode(metricReq)
 
 	request, err := http.NewRequest(

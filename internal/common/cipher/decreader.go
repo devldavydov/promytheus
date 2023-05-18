@@ -8,15 +8,13 @@ import (
 
 // DecReader implements io.ReadCloser and decrypt input data.
 type DecReader struct {
-	io.ReadCloser
-
 	privKey   *rsa.PrivateKey
-	inp       io.Reader
+	inp       io.ReadCloser
 	decBuf    bytes.Buffer
 	decrypted bool
 }
 
-func NewDecReader(privKey *rsa.PrivateKey, inp io.Reader) *DecReader {
+func NewDecReader(privKey *rsa.PrivateKey, inp io.ReadCloser) *DecReader {
 	return &DecReader{privKey: privKey, inp: inp}
 }
 
@@ -42,8 +40,9 @@ func (d *DecReader) Read(p []byte) (n int, err error) {
 	return d.decBuf.Read(p)
 }
 
-func (d *DecReader) Reset(inp io.Reader) {
-	d.inp = inp
-	d.decBuf.Reset()
-	d.decrypted = false
+func (d *DecReader) Close() error {
+	if d.inp != nil {
+		return d.inp.Close()
+	}
+	return nil
 }
