@@ -1,6 +1,9 @@
 package cipher
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"os"
 	"testing"
 
@@ -30,4 +33,28 @@ func TestEncryptDecrypt(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, testMsg, decrMsg)
+}
+
+func TestEncDecrWithBuffer(t *testing.T) {
+	type testStruct struct {
+		A int    `json:"a"`
+		B string `json:"b"`
+	}
+	testData := &testStruct{A: 123, B: "foobar"}
+
+	privKey, pubKey, err := GenerateKeyPair(2048)
+	assert.NoError(t, err)
+
+	buf := NewEncBuffer(pubKey)
+	json.NewEncoder(buf).Encode(testData)
+
+	encData, err := io.ReadAll(buf)
+	assert.NoError(t, err)
+	encBuffer := bytes.NewBuffer(encData)
+
+	decRdr := NewDecReader(privKey, encBuffer)
+	decData := &testStruct{}
+	json.NewDecoder(decRdr).Decode(decData)
+
+	assert.Equal(t, testData, decData)
 }
