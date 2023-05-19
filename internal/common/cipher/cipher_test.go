@@ -55,19 +55,10 @@ func TestEncDecrWithBuffer(t *testing.T) {
 	assert.NoError(t, err)
 	encBuffer := bytes.NewBuffer(encData)
 
-	type testEnvBufferClose struct {
-		io.ReadWriter
-		io.Closer
-	}
-
-	decRdr := NewDecReader(
-		privKey, struct {
-			io.ReadWriter
-			io.Closer
-		}{ReadWriter: encBuffer, Closer: nil},
-	)
+	decRdr := NewDecReader(privKey, io.NopCloser(encBuffer))
 	decData := &testStruct{}
 	json.NewDecoder(decRdr).Decode(decData)
+	assert.NoError(t, decRdr.Close())
 
 	assert.Equal(t, testData, decData)
 }
