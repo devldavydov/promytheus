@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -19,6 +20,7 @@ const (
 	_defaultHmacKey              = ""
 	_defaultRateLimit            = 2
 	_defaultCryptoPubKeyPath     = ""
+	_defaultConfigFilePath       = ""
 )
 
 type Config struct {
@@ -34,6 +36,7 @@ type Config struct {
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	var err error
+	var configFilePath string
 	config := &Config{}
 
 	flagSet.StringVar(&config.Address, "a", _defaultConfigAddress, "server address")
@@ -42,6 +45,10 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
 	flagSet.IntVar(&config.RateLimit, "l", _defaultRateLimit, "rate limit")
 	flagSet.StringVar(&config.CryptoPubKeyPath, "crypto-key", _defaultCryptoPubKeyPath, "crypto public key path")
+	//
+	flagSet.StringVar(&configFilePath, "c", _defaultConfigFilePath, "config file path")
+	flagSet.StringVar(&configFilePath, "config", _defaultConfigFilePath, "config file path")
+	//
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flagSet.PrintDefaults()
@@ -91,6 +98,16 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	//
+	configFilePath, err = env.GetVariable("CONFIG", env.CastString, configFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = applyConfigFile(config, configFilePath); err != nil {
+		return nil, err
+	}
+
 	return config, nil
 }
 
@@ -106,4 +123,43 @@ func AgentSettingsAdapt(config *Config) (agent.ServiceSettings, error) {
 		return agent.ServiceSettings{}, err
 	}
 	return agentSettings, nil
+}
+
+type configFile struct {
+	Address          *string        `json:"address"`
+	ReportInterval   *time.Duration `json:"report_interval"`
+	PollInterval     *time.Duration `json:"poll_interval"`
+	CryptoPubKeyPath *string        `json:"crypto_key"`
+}
+
+func applyConfigFile(config *Config, configFilePath string) error {
+	if configFilePath == "" {
+		return nil
+	}
+
+	f, err := os.OpenFile(configFilePath, os.O_RDONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	configFromFile := configFile{}
+	if err = json.NewDecoder(f).Decode(&configFromFile); err != nil {
+		return err
+	}
+
+	if configFromFile.Address != nil && config.Address == _defaultConfigAddress {
+		config.Address = *configFromFile.Address
+	}
+	if configFromFile.ReportInterval != nil && config.ReportInterval == _defaultConfigReportInterval {
+		config.ReportInterval = *configFromFile.ReportInterval
+	}
+	if configFromFile.PollInterval != nil && config.PollInterval == _defaultConfigPollInterval {
+		config.PollInterval = *configFromFile.PollInterval
+	}
+	if configFromFile.CryptoPubKeyPath != nil && config.CryptoPubKeyPath == _defaultCryptoPubKeyPath {
+		config.CryptoPubKeyPath = *configFromFile.CryptoPubKeyPath
+	}
+
+	return nil
 }

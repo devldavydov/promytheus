@@ -32,7 +32,7 @@ func run() error {
 
 	config, err := LoadConfig(*flag.CommandLine, os.Args[1:])
 	if err != nil {
-		return fmt.Errorf("failed to load flag and ENV settings: %w", err)
+		return fmt.Errorf("failed to load configuration settings: %w", err)
 	}
 
 	logger, closer, err := _log.NewLogger(config.LogLevel, config.LogFile)
