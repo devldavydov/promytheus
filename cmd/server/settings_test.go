@@ -1,12 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestServerSettingsAdaptDefault(t *testing.T) {
@@ -172,4 +175,44 @@ func TestServerSettingsCastEnvError(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+}
+
+func TestServerSettingsWithConfigFile(t *testing.T) {
+	// Create temp config file
+	fCfg, err := os.CreateTemp("", "cfg")
+	require.NoError(t, err)
+
+	defer func() {
+		fCfg.Close()
+		os.Remove(fCfg.Name())
+	}()
+
+	cfgAddr := "172.100.1.1:9090"
+	cfgStoreInt := 100 * time.Minute
+	databaseDsn := "foobar"
+
+	tempCfg := configFile{
+		Address:       &cfgAddr,
+		StoreInterval: &cfgStoreInt,
+		DatabaseDsn:   &databaseDsn,
+	}
+	assert.NoError(t, json.NewEncoder(fCfg).Encode(&tempCfg))
+
+	// Check
+	t.Setenv("DATABASE_DSN", "postgre:5444")
+	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
+	config, err := LoadConfig(*testFlagSet, []string{"-i", "10s", "-config", fCfg.Name()})
+	assert.NoError(t, err)
+
+	serverSettings, err := ServerSettingsAdapt(config)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "172.100.1.1", serverSettings.ServerAddress)
+	assert.Equal(t, 9090, serverSettings.ServerPort)
+	assert.Nil(t, serverSettings.HmacKey)
+	assert.Equal(t, 10*time.Second, serverSettings.PersistSettings.StoreInterval)
+	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
+	assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
+	assert.True(t, serverSettings.PersistSettings.Restore)
+	assert.Nil(t, serverSettings.CryptoPrivKeyPath)
 }
