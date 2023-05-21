@@ -3,6 +3,8 @@ package cipher
 import (
 	"bytes"
 	"crypto/rsa"
+
+	"github.com/devldavydov/promytheus/internal/common/iotools"
 )
 
 // EncBuffer implements io.ReadWriter with encryption.
@@ -14,6 +16,8 @@ type EncBuffer struct {
 	encBuf  bytes.Buffer
 	encoded bool
 }
+
+var _ iotools.PoolBuffer = (*EncBuffer)(nil)
 
 func NewEncBuffer(pubKey *rsa.PublicKey) *EncBuffer {
 	return &EncBuffer{pubKey: pubKey}
@@ -38,4 +42,10 @@ func (e *EncBuffer) Read(p []byte) (n int, err error) {
 	}
 
 	return e.encBuf.Read(p)
+}
+
+func (e *EncBuffer) Reset() {
+	e.buf.Reset()
+	e.encBuf.Reset()
+	e.encoded = false
 }
