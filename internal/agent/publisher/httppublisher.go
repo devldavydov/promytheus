@@ -76,18 +76,6 @@ func (httpPublisher *HTTPPublisher) Publish() {
 	// If channel closed, try to send failed metrics and exit
 	httpPublisher.shutdown()
 	httpPublisher.logger.Infof("Publisher[%d] thread shutdown due to context closed", httpPublisher.threadID)
-	// for {
-	// 	select {
-	// 	case metricsToSend, ok := <-httpPublisher.metricsChan:
-	// 		if !ok {
-	// 			// If channel closed, try to send failed metrics and exit
-	// 			httpPublisher.shutdown()
-	// 			httpPublisher.logger.Infof("Publisher[%d] thread shutdown due to context closed", httpPublisher.threadID)
-	// 			return
-	// 		}
-	// 		httpPublisher.processMetrics([]metric.Metrics{metricsToSend, httpPublisher.failedCounterMetrics})
-	// 	}
-	// }
 }
 
 func (httpPublisher *HTTPPublisher) processMetrics(metricsList []metric.Metrics) {
