@@ -152,6 +152,7 @@ type configFile struct {
 	StoreInterval     *time.Duration `json:"store_interval"`
 	StoreFile         *string        `json:"store_file"`
 	DatabaseDsn       *string        `json:"database_dsn"`
+	HmacKey           *string        `json:"hmac_key"`
 	CryptoPrivKeyPath *string        `json:"crypto_key"`
 }
 
@@ -185,6 +186,9 @@ func applyConfigFile(config *Config, configFilePath string) error {
 	}
 	if configFromFile.DatabaseDsn != nil && config.DatabaseDsn == _defaultDatabaseDsn {
 		config.DatabaseDsn = *configFromFile.DatabaseDsn
+	}
+	if configFromFile.HmacKey != nil && config.HmacKey == _defaultHmacKey {
+		config.HmacKey = *configFromFile.HmacKey
 	}
 	if configFromFile.CryptoPrivKeyPath != nil && config.CryptoPrivKeyPath == _defaultCryptoPrivKeyPath {
 		config.CryptoPrivKeyPath = *configFromFile.CryptoPrivKeyPath

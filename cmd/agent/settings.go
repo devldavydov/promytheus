@@ -129,6 +129,8 @@ type configFile struct {
 	Address          *string        `json:"address"`
 	ReportInterval   *time.Duration `json:"report_interval"`
 	PollInterval     *time.Duration `json:"poll_interval"`
+	HmacKey          *string        `json:"hmac_key"`
+	RateLimit        *int           `json:"rate_limit"`
 	CryptoPubKeyPath *string        `json:"crypto_key"`
 }
 
@@ -156,6 +158,12 @@ func applyConfigFile(config *Config, configFilePath string) error {
 	}
 	if configFromFile.PollInterval != nil && config.PollInterval == _defaultConfigPollInterval {
 		config.PollInterval = *configFromFile.PollInterval
+	}
+	if configFromFile.HmacKey != nil && config.HmacKey == _defaultHmacKey {
+		config.HmacKey = *configFromFile.HmacKey
+	}
+	if configFromFile.RateLimit != nil && config.RateLimit == _defaultRateLimit {
+		config.RateLimit = *configFromFile.RateLimit
 	}
 	if configFromFile.CryptoPubKeyPath != nil && config.CryptoPubKeyPath == _defaultCryptoPubKeyPath {
 		config.CryptoPubKeyPath = *configFromFile.CryptoPubKeyPath

@@ -216,3 +216,50 @@ func TestServerSettingsWithConfigFile(t *testing.T) {
 	assert.True(t, serverSettings.PersistSettings.Restore)
 	assert.Nil(t, serverSettings.CryptoPrivKeyPath)
 }
+
+func TestServerSettingsAllFromConfigFile(t *testing.T) {
+	// Create temp config file
+	fCfg, err := os.CreateTemp("", "cfg")
+	require.NoError(t, err)
+
+	defer func() {
+		fCfg.Close()
+		os.Remove(fCfg.Name())
+	}()
+
+	cfgAddr := "172.100.1.1:9090"
+	cfgRestore := true
+	cfgStoreInt := 100 * time.Minute
+	cfgStoreFile := "/tmp/store"
+	cfgDatabaseDsn := "foobar"
+	cfgHmacKey := "hmac_key"
+	cfgPrivKey := "/tmp/id_rsa"
+
+	tempCfg := configFile{
+		Address:           &cfgAddr,
+		Restore:           &cfgRestore,
+		StoreInterval:     &cfgStoreInt,
+		StoreFile:         &cfgStoreFile,
+		DatabaseDsn:       &cfgDatabaseDsn,
+		HmacKey:           &cfgHmacKey,
+		CryptoPrivKeyPath: &cfgPrivKey,
+	}
+	assert.NoError(t, json.NewEncoder(fCfg).Encode(&tempCfg))
+
+	// Check
+	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
+	config, err := LoadConfig(*testFlagSet, []string{"-config", fCfg.Name()})
+	assert.NoError(t, err)
+
+	serverSettings, err := ServerSettingsAdapt(config)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "172.100.1.1", serverSettings.ServerAddress)
+	assert.Equal(t, 9090, serverSettings.ServerPort)
+	assert.Equal(t, "hmac_key", *serverSettings.HmacKey)
+	assert.Equal(t, 100*time.Minute, serverSettings.PersistSettings.StoreInterval)
+	assert.Equal(t, "/tmp/store", serverSettings.PersistSettings.StoreFile)
+	assert.Equal(t, "foobar", serverSettings.DatabaseDsn)
+	assert.True(t, serverSettings.PersistSettings.Restore)
+	assert.Equal(t, "/tmp/id_rsa", *serverSettings.CryptoPrivKeyPath)
+}

@@ -189,3 +189,47 @@ func TestAgentSettingsWithConfigFile(t *testing.T) {
 	assert.Nil(t, agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 2, agentSettings.RateLimit)
 }
+
+func TestAgentSettingsAllFromConfigFile(t *testing.T) {
+	// Create temp config file
+	fCfg, err := os.CreateTemp("", "cfg")
+	require.NoError(t, err)
+
+	defer func() {
+		fCfg.Close()
+		os.Remove(fCfg.Name())
+	}()
+
+	cfgAddr := "172.100.1.1:9090"
+	cfgRepInt := 100 * time.Minute
+	cfgPollInt := 200 * time.Minute
+	cfgHmacKey := "hmacKey"
+	cfgRateLimit := 1
+	cfgPubKey := "/tmp/id_rsa.pub"
+
+	tempCfg := configFile{
+		Address:          &cfgAddr,
+		ReportInterval:   &cfgRepInt,
+		PollInterval:     &cfgPollInt,
+		HmacKey:          &cfgHmacKey,
+		RateLimit:        &cfgRateLimit,
+		CryptoPubKeyPath: &cfgPubKey,
+	}
+	assert.NoError(t, json.NewEncoder(fCfg).Encode(&tempCfg))
+
+	// Check
+	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
+	config, err := LoadConfig(*testFlagSet, []string{"-c", fCfg.Name()})
+	assert.NoError(t, err)
+
+	agentSettings, err := AgentSettingsAdapt(config)
+	assert.NoError(t, err)
+
+	expURL, _ := url.Parse("http://172.100.1.1:9090")
+	assert.Equal(t, 100*time.Minute, agentSettings.ReportInterval)
+	assert.Equal(t, 200*time.Minute, agentSettings.PollInterval)
+	assert.Equal(t, expURL, agentSettings.ServerAddress)
+	assert.Equal(t, "hmacKey", *agentSettings.HmacKey)
+	assert.Equal(t, "/tmp/id_rsa.pub", *agentSettings.CryptoPubKeyPath)
+	assert.Equal(t, 1, agentSettings.RateLimit)
+}
