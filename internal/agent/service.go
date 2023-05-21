@@ -22,7 +22,7 @@ type Collector interface {
 
 // Publisher is an interface for publisher functionality.
 type Publisher interface {
-	Publish(context.Context)
+	Publish()
 }
 
 // Service represents collecting metrics agent service.
@@ -33,10 +33,11 @@ type Service struct {
 	metricsChan                 chan metric.Metrics
 	collectors                  []Collector
 	settings                    ServiceSettings
+	shutdownTimeout             time.Duration
 }
 
 // NewService creates new agent service.
-func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
+func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger *logrus.Logger) *Service {
 	collectors := []Collector{
 		collector.NewRuntimeCollector(settings.PollInterval, logger),
 		collector.NewPsUtilCollector(settings.PollInterval, logger),
@@ -50,8 +51,16 @@ func NewService(settings ServiceSettings, logger *logrus.Logger) *Service {
 		collectors:  collectors,
 		metricsChan: ch,
 		publisherFactory: func(threadID int, cryptoPubKey *rsa.PublicKey) Publisher {
-			return publisher.NewHTTPPublisher(settings.ServerAddress, settings.HmacKey, ch, threadID, cryptoPubKey, logger)
+			return publisher.NewHTTPPublisher(
+				settings.ServerAddress,
+				settings.HmacKey,
+				ch,
+				threadID,
+				cryptoPubKey,
+				shutdownTimeout,
+				logger)
 		},
+		shutdownTimeout: shutdownTimeout,
 	}
 }
 
@@ -78,7 +87,7 @@ func (service *Service) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func(ctx context.Context, threadID int) {
 			defer wg.Done()
-			service.publisherFactory(threadID, cryptoPubKey).Publish(ctx)
+			service.publisherFactory(threadID, cryptoPubKey).Publish()
 		}(ctx, i+1)
 	}
 
@@ -108,6 +117,7 @@ func (service *Service) startMainLoop(ctx context.Context) {
 				service.metricsChan <- metrics
 			}
 		case <-ctx.Done():
+			close(service.metricsChan)
 			service.logger.Info("Main loop shutdown due to context closed")
 			return
 		}
