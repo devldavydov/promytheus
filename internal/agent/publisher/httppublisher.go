@@ -19,7 +19,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const _httpClientTimeout = 1 * time.Second
+const (
+	_httpClientTimeout      = 1 * time.Second
+	_defaultShutdownTimeout = 5 * time.Second
+)
 
 // HTTPPublisher is a HTTP metric publisher.
 type HTTPPublisher struct {
@@ -34,15 +37,19 @@ type HTTPPublisher struct {
 	shutdownTimeout      time.Duration
 }
 
+type HTTPPublisherOptionalSettings struct {
+	HmacKey         *string
+	CryptoPubKey    *rsa.PublicKey
+	ShutdownTimeout *time.Duration
+}
+
 // NewHTTPPublisher creates new HTTPPublisher.
 func NewHTTPPublisher(
 	serverAddress *url.URL,
-	hmacKey *string,
 	metricsChan <-chan metric.Metrics,
 	threadID int,
-	cryptoPubKey *rsa.PublicKey,
-	shutdownTimeout time.Duration,
 	logger *logrus.Logger,
+	optional HTTPPublisherOptionalSettings,
 ) *HTTPPublisher {
 	client := &http.Client{
 		Timeout: _httpClientTimeout,
@@ -50,16 +57,21 @@ func NewHTTPPublisher(
 
 	bufPool := &sync.Pool{
 		New: func() any {
-			if cryptoPubKey == nil {
+			if optional.CryptoPubKey == nil {
 				return bytes.NewBuffer([]byte{})
 			}
-			return cipher.NewEncBuffer(cryptoPubKey)
+			return cipher.NewEncBuffer(optional.CryptoPubKey)
 		},
+	}
+
+	shutdownTimeout := _defaultShutdownTimeout
+	if optional.ShutdownTimeout != nil {
+		shutdownTimeout = *optional.ShutdownTimeout
 	}
 
 	return &HTTPPublisher{
 		serverAddress:   serverAddress,
-		hmacKey:         hmacKey,
+		hmacKey:         optional.HmacKey,
 		httpClient:      client,
 		metricsChan:     metricsChan,
 		threadID:        threadID,

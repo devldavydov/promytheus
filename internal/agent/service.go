@@ -53,12 +53,14 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 		publisherFactory: func(threadID int, cryptoPubKey *rsa.PublicKey) Publisher {
 			return publisher.NewHTTPPublisher(
 				settings.ServerAddress,
-				settings.HmacKey,
 				ch,
 				threadID,
-				cryptoPubKey,
-				shutdownTimeout,
-				logger)
+				logger,
+				publisher.HTTPPublisherOptionalSettings{
+					HmacKey:         settings.HmacKey,
+					CryptoPubKey:    cryptoPubKey,
+					ShutdownTimeout: &shutdownTimeout,
+				})
 		},
 		shutdownTimeout: shutdownTimeout,
 	}
