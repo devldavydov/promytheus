@@ -4,18 +4,25 @@ package publisher
 import (
 	"bytes"
 	"context"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
+	"github.com/devldavydov/promytheus/internal/common/cipher"
 	_http "github.com/devldavydov/promytheus/internal/common/http"
+	"github.com/devldavydov/promytheus/internal/common/iotools"
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/sirupsen/logrus"
 )
 
-const _httpClientTimeout = 1 * time.Second
+const (
+	_httpClientTimeout      = 1 * time.Second
+	_defaultShutdownTimeout = 5 * time.Second
+)
 
 // HTTPPublisher is a HTTP metric publisher.
 type HTTPPublisher struct {
@@ -25,45 +32,72 @@ type HTTPPublisher struct {
 	metricsChan          <-chan metric.Metrics
 	logger               *logrus.Logger
 	failedCounterMetrics metric.Metrics
+	bufPool              *sync.Pool
 	threadID             int
+	shutdownTimeout      time.Duration
+}
+
+type HTTPPublisherOptionalSettings struct {
+	HmacKey         *string
+	CryptoPubKey    *rsa.PublicKey
+	ShutdownTimeout *time.Duration
 }
 
 // NewHTTPPublisher creates new HTTPPublisher.
-func NewHTTPPublisher(serverAddress *url.URL, hmacKey *string, metricsChan <-chan metric.Metrics, threadID int, logger *logrus.Logger) *HTTPPublisher {
+func NewHTTPPublisher(
+	serverAddress *url.URL,
+	metricsChan <-chan metric.Metrics,
+	threadID int,
+	logger *logrus.Logger,
+	optional HTTPPublisherOptionalSettings,
+) *HTTPPublisher {
 	client := &http.Client{
 		Timeout: _httpClientTimeout,
 	}
 
+	bufPool := &sync.Pool{
+		New: func() any {
+			if optional.CryptoPubKey == nil {
+				return bytes.NewBuffer([]byte{})
+			}
+			return cipher.NewEncBuffer(optional.CryptoPubKey)
+		},
+	}
+
+	shutdownTimeout := _defaultShutdownTimeout
+	if optional.ShutdownTimeout != nil {
+		shutdownTimeout = *optional.ShutdownTimeout
+	}
+
 	return &HTTPPublisher{
-		serverAddress: serverAddress,
-		hmacKey:       hmacKey,
-		httpClient:    client,
-		metricsChan:   metricsChan,
-		threadID:      threadID,
-		logger:        logger,
+		serverAddress:   serverAddress,
+		hmacKey:         optional.HmacKey,
+		httpClient:      client,
+		metricsChan:     metricsChan,
+		threadID:        threadID,
+		bufPool:         bufPool,
+		shutdownTimeout: shutdownTimeout,
+		logger:          logger,
 	}
 }
 
-func (httpPublisher *HTTPPublisher) Publish(ctx context.Context) {
-	for {
-		select {
-		case metricsToSend := <-httpPublisher.metricsChan:
-			httpPublisher.processMetrics(ctx, []metric.Metrics{metricsToSend, httpPublisher.failedCounterMetrics})
-		case <-ctx.Done():
-			httpPublisher.logger.Infof("Publisher[%d] thread shutdown due to context closed", httpPublisher.threadID)
-			return
-		}
+func (httpPublisher *HTTPPublisher) Publish() {
+	for metricsToSend := range httpPublisher.metricsChan {
+		httpPublisher.processMetrics([]metric.Metrics{metricsToSend, httpPublisher.failedCounterMetrics})
 	}
+	// If channel closed, try to send failed metrics and exit
+	httpPublisher.shutdown()
+	httpPublisher.logger.Infof("Publisher[%d] thread shutdown due to context closed", httpPublisher.threadID)
 }
 
-func (httpPublisher *HTTPPublisher) processMetrics(ctx context.Context, metricsList []metric.Metrics) {
+func (httpPublisher *HTTPPublisher) processMetrics(metricsList []metric.Metrics) {
 	var counterMetricsToSend = make(metric.Metrics)
 
 	httpPublisher.logger.Debugf("Publisher[%d] publishing metrics: %+v", httpPublisher.threadID, metricsList)
 
 	metricReq := make([]metric.MetricsDTO, 0, totalMetrics(metricsList))
 
-	iterateMetrics(ctx, metricsList, func(name string, value metric.MetricValue) {
+	iterateMetrics(metricsList, func(name string, value metric.MetricValue) {
 		metricReq = append(metricReq, httpPublisher.prepareMetric(name, value))
 
 		if value.TypeName() == metric.CounterTypeName {
@@ -86,13 +120,16 @@ func (httpPublisher *HTTPPublisher) processMetrics(ctx context.Context, metricsL
 }
 
 func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO) error {
-	var buf bytes.Buffer
-	json.NewEncoder(&buf).Encode(metricReq)
+	buf := httpPublisher.bufPool.Get().(iotools.PoolBuffer)
+	defer httpPublisher.bufPool.Put(buf)
+
+	buf.Reset()
+	json.NewEncoder(buf).Encode(metricReq)
 
 	request, err := http.NewRequest(
 		http.MethodPost,
 		httpPublisher.serverAddress.JoinPath("updates/").String(),
-		&buf)
+		buf)
 	if err != nil {
 		return fmt.Errorf("publisher[%d] failed to create request: %w", httpPublisher.threadID, err)
 	}
@@ -128,12 +165,34 @@ func (httpPublisher *HTTPPublisher) prepareMetric(metricName string, metricValue
 	return metricReq
 }
 
-func iterateMetrics(ctx context.Context, metricsList []metric.Metrics, fn func(name string, value metric.MetricValue)) {
-	for _, metrics := range metricsList {
-		for name, value := range metrics {
-			if ctx.Err() != nil {
+func (httpPublisher *HTTPPublisher) shutdown() {
+	if httpPublisher.failedCounterMetrics == nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), httpPublisher.shutdownTimeout)
+	defer cancel()
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if httpPublisher.failedCounterMetrics == nil {
 				return
 			}
+
+			httpPublisher.processMetrics([]metric.Metrics{httpPublisher.failedCounterMetrics})
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func iterateMetrics(metricsList []metric.Metrics, fn func(name string, value metric.MetricValue)) {
+	for _, metrics := range metricsList {
+		for name, value := range metrics {
 			fn(name, value)
 		}
 	}

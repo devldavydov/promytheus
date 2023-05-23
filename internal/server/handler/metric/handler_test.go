@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rsa"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
+	"github.com/devldavydov/promytheus/internal/common/cipher"
 	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/server/middleware"
 	"github.com/devldavydov/promytheus/internal/server/mocks"
@@ -33,6 +36,7 @@ type testRequest struct {
 	body        io.Reader
 	contentType *string
 	hmacKey     *string
+	encryption  bool
 	headers     map[string][]string
 	method      string
 	url         string
@@ -47,6 +51,16 @@ type testItem struct {
 	resp         testResponse
 	xfail        bool
 	dbStg        bool
+}
+
+var (
+	privKey *rsa.PrivateKey
+	pubKey  *rsa.PublicKey
+)
+
+func TestMain(m *testing.M) {
+	privKey, pubKey, _ = cipher.GenerateKeyPair(2048)
+	os.Exit(m.Run())
 }
 
 func runTests(t *testing.T, tests []testItem) {
@@ -77,7 +91,14 @@ func runTests(t *testing.T, tests []testItem) {
 			}
 
 			router := chi.NewRouter()
-			router.Use(middleware.Gzip)
+
+			var cryptoPrivKey *rsa.PrivateKey
+			if tt.req.encryption {
+				cryptoPrivKey = privKey
+			}
+			mdlwrDecr := middleware.NewDecrpyt(cryptoPrivKey)
+
+			router.Use(middleware.Gzip, mdlwrDecr.Handle)
 
 			NewHandler(router, stg, tt.req.hmacKey, logger)
 			ts := httptest.NewServer(router)
@@ -157,6 +178,13 @@ func bodyGzipReader(val string) io.Reader {
 	zw.Write([]byte(val))
 	zw.Close()
 	return &buf
+}
+
+func encryptString(val string) string {
+	encBuf := cipher.NewEncBuffer(pubKey)
+	encBuf.Write([]byte(val))
+	encData, _ := io.ReadAll(encBuf)
+	return string(encData)
 }
 
 func strPointer(s string) *string { return &s }

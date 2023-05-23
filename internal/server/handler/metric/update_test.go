@@ -401,6 +401,56 @@ func TestUpdateJsonMetric(t *testing.T) {
 				s.SetCounterMetric("foo", 123)
 			},
 		},
+		{
+			name: "update JSON metric: correct gauge, encrypted",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(encryptString(`{"id": "foo_encr", "type": "gauge", "value": 123.0}`)),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				encryption:  true,
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo_encr","type":"gauge","value":123}`,
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+		},
+		{
+			name: "update JSON metric: correct counter, encrypted",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyStringReader(encryptString(`{"id": "foo_encr", "type": "counter", "delta": 123}`)),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				encryption:  true,
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo_encr","type":"counter","delta":123}`,
+				contentType: _http.ContentTypeApplicationJSON,
+			},
+		},
+		{
+			name: "update JSON metric: correct counter with encryption, gzipped",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyGzipReader(encryptString(`{"id": "foo_encr_gz", "type": "counter", "delta": 123}`)),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				headers:     map[string][]string{"Accept-Encoding": {"gzip"}, "Content-Encoding": {"gzip"}},
+				encryption:  true,
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo_encr_gz","type":"counter","delta":123}`,
+				contentType: _http.ContentTypeApplicationJSON,
+				headers:     map[string][]string{"Content-Encoding": {"gzip"}},
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetCounterMetric("foo", 123)
+			},
+		},
 	}
 
 	runTests(t, tests)
@@ -863,6 +913,42 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 					{MetricName: "foo", Value: metric.Counter(4)},
 					{MetricName: "fuzz", Value: metric.Counter(4)},
 					{MetricName: "bar", Value: metric.Gauge(123.123)},
+				}
+			},
+		},
+		{
+			name: "update JSON metric: multiple values, encrypted and gziped",
+			req: testRequest{
+				method: http.MethodPost,
+				url:    "/updates/",
+				body: bodyGzipReader(encryptString(`[
+					{"id": "bar_enc", "type": "gauge", "value": 123.123},
+					{"id": "foo_enc", "type": "counter", "delta": 1},
+					{"id": "foo_enc", "type": "counter", "delta": 1},
+					{"id": "foo_enc", "type": "counter", "delta": 1},
+					{"id": "fuzz_enc", "type": "counter", "delta": 2},
+					{"id": "fuzz_enc", "type": "counter", "delta": 2},
+					{"id": "buzz_enc", "type": "counter", "delta": 1}
+				]`)),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				encryption:  true,
+				headers:     map[string][]string{"Accept-Encoding": {"gzip"}, "Content-Encoding": {"gzip"}},
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `[]`,
+				contentType: _http.ContentTypeApplicationJSON,
+				headers:     map[string][]string{"Content-Encoding": {"gzip"}},
+			},
+			stgInitFunc: func(s storage.Storage) {
+				s.SetCounterMetric("foo_enc", 1)
+			},
+			stgCheckFunc: func() []storage.StorageItem {
+				return []storage.StorageItem{
+					{MetricName: "buzz_enc", Value: metric.Counter(1)},
+					{MetricName: "foo_enc", Value: metric.Counter(4)},
+					{MetricName: "fuzz_enc", Value: metric.Counter(4)},
+					{MetricName: "bar_enc", Value: metric.Gauge(123.123)},
 				}
 			},
 		},

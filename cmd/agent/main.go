@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/devldavydov/promytheus/internal/agent"
 	"github.com/devldavydov/promytheus/internal/common/info"
@@ -32,7 +33,7 @@ func run() error {
 
 	config, err := LoadConfig(*flag.CommandLine, os.Args[1:])
 	if err != nil {
-		return fmt.Errorf("failed to load flag and ENV settings: %w", err)
+		return fmt.Errorf("failed to load configuration settings: %w", err)
 	}
 
 	logger, closer, err := _log.NewLogger(config.LogLevel, config.LogFile)
@@ -47,9 +48,9 @@ func run() error {
 	}
 
 	logger.Info(appVer)
-	agentService := agent.NewService(agentSettings, logger)
+	agentService := agent.NewService(agentSettings, 5*time.Second, logger)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer stop()
 
 	return agentService.Start(ctx)

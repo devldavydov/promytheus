@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -22,21 +23,25 @@ const (
 	_defaultConfigRestore       = true
 	_defaultHmacKey             = ""
 	_defaultDatabaseDsn         = ""
+	_defaultCryptoPrivKeyPath   = ""
+	_defaultConfigFilePath      = ""
 )
 
 type Config struct {
-	Address       string
-	StoreFile     string
-	HmacKey       string
-	DatabaseDsn   string
-	LogLevel      string
-	LogFile       string
-	StoreInterval time.Duration
-	Restore       bool
+	Address           string
+	StoreFile         string
+	HmacKey           string
+	DatabaseDsn       string
+	LogLevel          string
+	LogFile           string
+	CryptoPrivKeyPath string
+	StoreInterval     time.Duration
+	Restore           bool
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	var err error
+	var configFilePath string
 	config := &Config{}
 
 	// Check flags
@@ -46,6 +51,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.BoolVar(&config.Restore, "r", _defaultConfigRestore, "restore")
 	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
 	flagSet.StringVar(&config.DatabaseDsn, "d", _defaultDatabaseDsn, "database dsn")
+	flagSet.StringVar(&config.CryptoPrivKeyPath, "crypto-key", _defaultCryptoPrivKeyPath, "crypto private key path")
+	//
+	flagSet.StringVar(&configFilePath, "c", _defaultConfigFilePath, "config file path")
+	flagSet.StringVar(&configFilePath, "config", _defaultConfigFilePath, "config file path")
+	//
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		flagSet.PrintDefaults()
@@ -86,6 +96,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.CryptoPrivKeyPath, err = env.GetVariable("CRYPTO_KEY", env.CastString, config.CryptoPrivKeyPath)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -93,6 +108,16 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 
 	config.LogFile, err = env.GetVariable("LOG_FILE", env.CastString, _defaultConfigLogFile)
 	if err != nil {
+		return nil, err
+	}
+
+	//
+	configFilePath, err = env.GetVariable("CONFIG", env.CastString, configFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = applyConfigFile(config, configFilePath); err != nil {
 		return nil, err
 	}
 
@@ -112,5 +137,62 @@ func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
 	}
 
 	persistSettings := storage.NewPersistSettings(config.StoreInterval, config.StoreFile, config.Restore)
-	return server.NewServiceSettings(address, port, config.HmacKey, config.DatabaseDsn, persistSettings), nil
+	return server.NewServiceSettings(
+		address,
+		port,
+		config.HmacKey,
+		config.DatabaseDsn,
+		persistSettings,
+		config.CryptoPrivKeyPath), nil
+}
+
+type configFile struct {
+	Address           *string        `json:"address"`
+	Restore           *bool          `json:"restore"`
+	StoreInterval     *time.Duration `json:"store_interval"`
+	StoreFile         *string        `json:"store_file"`
+	DatabaseDsn       *string        `json:"database_dsn"`
+	HmacKey           *string        `json:"hmac_key"`
+	CryptoPrivKeyPath *string        `json:"crypto_key"`
+}
+
+func applyConfigFile(config *Config, configFilePath string) error {
+	if configFilePath == "" {
+		return nil
+	}
+
+	f, err := os.OpenFile(configFilePath, os.O_RDONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	configFromFile := configFile{}
+	if err = json.NewDecoder(f).Decode(&configFromFile); err != nil {
+		return err
+	}
+
+	if configFromFile.Address != nil && config.Address == _defaultConfigAddress {
+		config.Address = *configFromFile.Address
+	}
+	if configFromFile.Restore != nil && config.Restore {
+		config.Restore = *configFromFile.Restore
+	}
+	if configFromFile.StoreInterval != nil && config.StoreInterval == _defaultconfigStoreInterval {
+		config.StoreInterval = *configFromFile.StoreInterval
+	}
+	if configFromFile.StoreFile != nil && config.StoreFile == _defaultConfigStoreFile {
+		config.StoreFile = *configFromFile.StoreFile
+	}
+	if configFromFile.DatabaseDsn != nil && config.DatabaseDsn == _defaultDatabaseDsn {
+		config.DatabaseDsn = *configFromFile.DatabaseDsn
+	}
+	if configFromFile.HmacKey != nil && config.HmacKey == _defaultHmacKey {
+		config.HmacKey = *configFromFile.HmacKey
+	}
+	if configFromFile.CryptoPrivKeyPath != nil && config.CryptoPrivKeyPath == _defaultCryptoPrivKeyPath {
+		config.CryptoPrivKeyPath = *configFromFile.CryptoPrivKeyPath
+	}
+
+	return nil
 }

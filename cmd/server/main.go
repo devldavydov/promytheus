@@ -50,7 +50,7 @@ func run() error {
 	logger.Info(appVer)
 	serverService := server.NewService(serverSettings, 5*time.Second, logger)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer stop()
 
 	return serverService.Start(ctx)

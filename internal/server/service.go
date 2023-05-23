@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/devldavydov/promytheus/internal/common/cipher"
 	"github.com/devldavydov/promytheus/internal/server/handler/metric"
 	_middleware "github.com/devldavydov/promytheus/internal/server/middleware"
 	"github.com/devldavydov/promytheus/internal/server/storage"
@@ -29,11 +31,18 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 func (service *Service) Start(ctx context.Context) error {
 	service.logger.Infof("Server service started on [%s:%d]", service.settings.ServerAddress, service.settings.ServerPort)
 
+	// Create decryption middleware
+	cryptoPrivKey, err := service.loadCryptoPrivKey()
+	if err != nil {
+		return err
+	}
+	mdlwrDecr := _middleware.NewDecrpyt(cryptoPrivKey)
+
+	// Create router
 	router := chi.NewRouter()
-	router.Use(middleware.RealIP, middleware.Logger, middleware.Recoverer, _middleware.Gzip)
+	router.Use(middleware.RealIP, middleware.Logger, middleware.Recoverer, _middleware.Gzip, mdlwrDecr.Handle)
 
 	var stg storage.Storage
-	var err error
 
 	if service.settings.DatabaseDsn == "" {
 		stg, err = storage.NewMemStorage(ctx, service.logger, service.settings.PersistSettings)
@@ -81,4 +90,11 @@ func (service *Service) Start(ctx context.Context) error {
 
 func (service *Service) getServerFullAddr() string {
 	return fmt.Sprintf("%s:%d", service.settings.ServerAddress, service.settings.ServerPort)
+}
+
+func (service *Service) loadCryptoPrivKey() (*rsa.PrivateKey, error) {
+	if service.settings.CryptoPrivKeyPath == nil {
+		return nil, nil
+	}
+	return cipher.PrivateKeyFromFile(*service.settings.CryptoPrivKeyPath)
 }

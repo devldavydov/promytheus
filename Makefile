@@ -178,7 +178,8 @@ test_bench: build
 test_cover:
 	@echo "\n### $@"
 	@echo "DON'T FORGET TO START postgres.sh\n"
-	@go test ./... -coverprofile cover.html -v --count 1
+	@export TEST_DATABASE_DSN=postgres://postgres:postgres@127.0.0.1:5432/praktikum?sslmode=disable && \
+	 go test ./... -coverprofile cover.html -v --count 1
 	@go tool cover -html=cover.html
 
 .PHONY: diff_bench
