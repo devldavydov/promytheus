@@ -11,6 +11,7 @@ import (
 	"github.com/devldavydov/promytheus/internal/agent/publisher"
 	"github.com/devldavydov/promytheus/internal/common/cipher"
 	"github.com/devldavydov/promytheus/internal/common/metric"
+	"github.com/devldavydov/promytheus/internal/common/nettools"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,13 +38,18 @@ type Service struct {
 }
 
 // NewService creates new agent service.
-func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger *logrus.Logger) *Service {
+func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger *logrus.Logger) (*Service, error) {
 	collectors := []Collector{
 		collector.NewRuntimeCollector(settings.PollInterval, logger),
 		collector.NewPsUtilCollector(settings.PollInterval, logger),
 	}
 
 	ch := make(chan metric.Metrics, len(collectors)*2)
+
+	hostIP, err := nettools.GetHostIP()
+	if err != nil {
+		return nil, err
+	}
 
 	return &Service{
 		settings:    settings,
@@ -56,14 +62,15 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 				ch,
 				threadID,
 				logger,
-				publisher.HTTPPublisherOptionalSettings{
+				publisher.HTTPPublisherExtraSettings{
 					HmacKey:         settings.HmacKey,
 					CryptoPubKey:    cryptoPubKey,
 					ShutdownTimeout: &shutdownTimeout,
+					HostIP:          hostIP,
 				})
 		},
 		shutdownTimeout: shutdownTimeout,
-	}
+	}, nil
 }
 
 // Start runs agent service with context.

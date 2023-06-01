@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -25,6 +26,7 @@ const (
 	_defaultDatabaseDsn         = ""
 	_defaultCryptoPrivKeyPath   = ""
 	_defaultConfigFilePath      = ""
+	_defaultTrustedSubnet       = ""
 )
 
 type Config struct {
@@ -35,6 +37,7 @@ type Config struct {
 	LogLevel          string
 	LogFile           string
 	CryptoPrivKeyPath string
+	TrustedSubnet     string
 	StoreInterval     time.Duration
 	Restore           bool
 }
@@ -52,6 +55,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
 	flagSet.StringVar(&config.DatabaseDsn, "d", _defaultDatabaseDsn, "database dsn")
 	flagSet.StringVar(&config.CryptoPrivKeyPath, "crypto-key", _defaultCryptoPrivKeyPath, "crypto private key path")
+	flagSet.StringVar(&config.TrustedSubnet, "t", _defaultTrustedSubnet, "trusted subnet")
 	//
 	flagSet.StringVar(&configFilePath, "c", _defaultConfigFilePath, "config file path")
 	flagSet.StringVar(&configFilePath, "config", _defaultConfigFilePath, "config file path")
@@ -101,6 +105,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.TrustedSubnet, err = env.GetVariable("TRUSTED_SUBNET", env.CastString, config.TrustedSubnet)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -136,6 +145,14 @@ func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
 		return server.ServiceSettings{}, fmt.Errorf("wrong address format")
 	}
 
+	var trustedSubnet *net.IPNet
+	if config.TrustedSubnet != "" {
+		_, trustedSubnet, err = net.ParseCIDR(config.TrustedSubnet)
+		if err != nil {
+			return server.ServiceSettings{}, err
+		}
+	}
+
 	persistSettings := storage.NewPersistSettings(config.StoreInterval, config.StoreFile, config.Restore)
 	return server.NewServiceSettings(
 		address,
@@ -143,7 +160,8 @@ func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
 		config.HmacKey,
 		config.DatabaseDsn,
 		persistSettings,
-		config.CryptoPrivKeyPath), nil
+		config.CryptoPrivKeyPath,
+		trustedSubnet), nil
 }
 
 type configFile struct {
@@ -154,6 +172,7 @@ type configFile struct {
 	DatabaseDsn       *string        `json:"database_dsn"`
 	HmacKey           *string        `json:"hmac_key"`
 	CryptoPrivKeyPath *string        `json:"crypto_key"`
+	TrustedSubnet     *string        `json:"trusted_subnet"`
 }
 
 func applyConfigFile(config *Config, configFilePath string) error {
@@ -192,6 +211,9 @@ func applyConfigFile(config *Config, configFilePath string) error {
 	}
 	if configFromFile.CryptoPrivKeyPath != nil && config.CryptoPrivKeyPath == _defaultCryptoPrivKeyPath {
 		config.CryptoPrivKeyPath = *configFromFile.CryptoPrivKeyPath
+	}
+	if configFromFile.TrustedSubnet != nil && config.TrustedSubnet == _defaultTrustedSubnet {
+		config.TrustedSubnet = *configFromFile.TrustedSubnet
 	}
 
 	return nil

@@ -3,9 +3,11 @@ package metric
 
 import (
 	"errors"
+	"net"
 	"net/http"
 
 	_http "github.com/devldavydov/promytheus/internal/common/http"
+	_middleware "github.com/devldavydov/promytheus/internal/server/middleware"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
@@ -33,12 +35,25 @@ type MetricHandler struct {
 	logger  *logrus.Logger
 }
 
-func NewHandler(router chi.Router, storage storage.Storage, hmacKey *string, logger *logrus.Logger) *MetricHandler {
+func NewHandler(
+	router chi.Router,
+	storage storage.Storage,
+	hmacKey *string,
+	trustedSubnet *net.IPNet,
+	logger *logrus.Logger,
+) *MetricHandler {
 	handler := &MetricHandler{storage: storage, hmacKey: hmacKey, logger: logger}
 
-	router.Post("/update/{metricType}/{metricName}/{metricValue}", handler.UpdateMetric)
-	router.Post("/update/", handler.UpdateMetricJSON)
-	router.Post("/updates/", handler.UpdateMetricJSONBatch)
+	mdlwrTrusted := _middleware.NewTrusted(trustedSubnet)
+
+	router.Group(func(r chi.Router) {
+		r.Use(mdlwrTrusted.Handle)
+
+		r.Post("/update/{metricType}/{metricName}/{metricValue}", handler.UpdateMetric)
+		r.Post("/update/", handler.UpdateMetricJSON)
+		r.Post("/updates/", handler.UpdateMetricJSONBatch)
+	})
+
 	router.Get("/value/{metricType}/{metricName}", handler.GetMetric)
 	router.Post("/value/", handler.GetMetricJSON)
 	router.Get("/", handler.GetMetrics)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -28,6 +29,7 @@ func TestServerSettingsAdaptDefault(t *testing.T) {
 	assert.Equal(t, "", serverSettings.DatabaseDsn)
 	assert.True(t, serverSettings.PersistSettings.Restore)
 	assert.Nil(t, serverSettings.CryptoPrivKeyPath)
+	assert.Nil(t, serverSettings.TrustedSubnet)
 }
 
 func TestServerSettingsAdaptCustomEnv(t *testing.T) {
@@ -40,6 +42,7 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 		t.Setenv("KEY", "123")
 		t.Setenv("DATABASE_DSN", "postgre:5444")
 		t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa")
+		t.Setenv("TRUSTED_SUBNET", "192.168.0.0/16")
 
 		testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 		config, err := LoadConfig(*testFlagSet, []string{})
@@ -56,6 +59,7 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 		assert.False(t, serverSettings.PersistSettings.Restore)
 		assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 		assert.Equal(t, "/home/.ssh/id_rsa", *serverSettings.CryptoPrivKeyPath)
+		assert.Equal(t, getIPNet("192.168.0.0/16"), serverSettings.TrustedSubnet)
 	}
 }
 
@@ -70,7 +74,8 @@ func TestServerSettingsAdaptCustomFlag(t *testing.T) {
 			"-r=false",
 			"-k", "123",
 			"-d", "postgre:5444",
-			"-crypto-key", "/home/.ssh/id_rsa"})
+			"-crypto-key", "/home/.ssh/id_rsa",
+			"-t", "192.168.0.0/16"})
 	assert.NoError(t, err)
 
 	serverSettings, err := ServerSettingsAdapt(config)
@@ -84,6 +89,7 @@ func TestServerSettingsAdaptCustomFlag(t *testing.T) {
 	assert.False(t, serverSettings.PersistSettings.Restore)
 	assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 	assert.Equal(t, "/home/.ssh/id_rsa", *serverSettings.CryptoPrivKeyPath)
+	assert.Equal(t, getIPNet("192.168.0.0/16"), serverSettings.TrustedSubnet)
 }
 
 func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
@@ -94,6 +100,7 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	t.Setenv("KEY", "123")
 	t.Setenv("DATABASE_DSN", "postgre:5444")
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa")
+	t.Setenv("TRUSTED_SUBNET", "10.0.0.0/16")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 	config, err := LoadConfig(
@@ -105,7 +112,8 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 			"-r=true",
 			"-k", "456",
 			"-d", "postgre:5444",
-			"-crypto-key", "./id_rsa"})
+			"-crypto-key", "./id_rsa",
+			"-t", "192.168.0.0/16"})
 	assert.NoError(t, err)
 
 	serverSettings, err := ServerSettingsAdapt(config)
@@ -119,12 +127,14 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	assert.False(t, serverSettings.PersistSettings.Restore)
 	assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 	assert.Equal(t, "/home/.ssh/id_rsa", *serverSettings.CryptoPrivKeyPath)
+	assert.Equal(t, getIPNet("10.0.0.0/16"), serverSettings.TrustedSubnet)
 }
 
 func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	t.Setenv("STORE_INTERVAL", "1s")
 	t.Setenv("RESTORE", "true")
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa")
+	t.Setenv("TRUSTED_SUBNET", "10.0.0.0/16")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 	config, err := LoadConfig(*testFlagSet, []string{"-i", "5m", "-r=false", "-k", "123"})
@@ -141,20 +151,32 @@ func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	assert.True(t, serverSettings.PersistSettings.Restore)
 	assert.Equal(t, "", serverSettings.DatabaseDsn)
 	assert.Equal(t, "/home/.ssh/id_rsa", *serverSettings.CryptoPrivKeyPath)
+	assert.Equal(t, getIPNet("10.0.0.0/16"), serverSettings.TrustedSubnet)
 }
 
 func TestServerSettingsAdaptCustomError(t *testing.T) {
-	testAddress := []string{"1.1.1.1", "1.1.1.1:foobar"}
+	for i, tt := range []struct {
+		varName string
+		varVal  string
+	}{
+		{varName: "ADDRESS", varVal: "1.1.1.1"},
+		{varName: "ADDRESS", varVal: "1.1.1.1:foobar"},
+		{varName: "TRUSTED_SUBNET", varVal: "abcdef"},
+		{varName: "TRUSTED_SUBNET", varVal: "10.0.0.0"},
+		{varName: "TRUSTED_SUBNET", varVal: "10.0.0.0/500"},
+	} {
+		tt := tt
+		i := i
+		t.Run(fmt.Sprintf("Run %d", i), func(t *testing.T) {
+			t.Setenv(tt.varName, tt.varVal)
 
-	for _, addr := range testAddress {
-		t.Setenv("ADDRESS", addr)
+			testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
+			config, err := LoadConfig(*testFlagSet, []string{})
+			assert.NoError(t, err)
 
-		testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-		config, err := LoadConfig(*testFlagSet, []string{})
-		assert.NoError(t, err)
-
-		_, err = ServerSettingsAdapt(config)
-		assert.Error(t, err)
+			_, err = ServerSettingsAdapt(config)
+			assert.Error(t, err)
+		})
 	}
 }
 
@@ -190,11 +212,13 @@ func TestServerSettingsWithConfigFile(t *testing.T) {
 	cfgAddr := "172.100.1.1:9090"
 	cfgStoreInt := 100 * time.Minute
 	databaseDsn := "foobar"
+	trustedSubnet := "10.0.0.0/16"
 
 	tempCfg := configFile{
 		Address:       &cfgAddr,
 		StoreInterval: &cfgStoreInt,
 		DatabaseDsn:   &databaseDsn,
+		TrustedSubnet: &trustedSubnet,
 	}
 	assert.NoError(t, json.NewEncoder(fCfg).Encode(&tempCfg))
 
@@ -215,6 +239,7 @@ func TestServerSettingsWithConfigFile(t *testing.T) {
 	assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 	assert.True(t, serverSettings.PersistSettings.Restore)
 	assert.Nil(t, serverSettings.CryptoPrivKeyPath)
+	assert.Equal(t, getIPNet("10.0.0.0/16"), serverSettings.TrustedSubnet)
 }
 
 func TestServerSettingsAllFromConfigFile(t *testing.T) {
@@ -234,6 +259,7 @@ func TestServerSettingsAllFromConfigFile(t *testing.T) {
 	cfgDatabaseDsn := "foobar"
 	cfgHmacKey := "hmac_key"
 	cfgPrivKey := "/tmp/id_rsa"
+	trustedSubnet := "10.0.0.0/16"
 
 	tempCfg := configFile{
 		Address:           &cfgAddr,
@@ -243,6 +269,7 @@ func TestServerSettingsAllFromConfigFile(t *testing.T) {
 		DatabaseDsn:       &cfgDatabaseDsn,
 		HmacKey:           &cfgHmacKey,
 		CryptoPrivKeyPath: &cfgPrivKey,
+		TrustedSubnet:     &trustedSubnet,
 	}
 	assert.NoError(t, json.NewEncoder(fCfg).Encode(&tempCfg))
 
@@ -262,4 +289,10 @@ func TestServerSettingsAllFromConfigFile(t *testing.T) {
 	assert.Equal(t, "foobar", serverSettings.DatabaseDsn)
 	assert.True(t, serverSettings.PersistSettings.Restore)
 	assert.Equal(t, "/tmp/id_rsa", *serverSettings.CryptoPrivKeyPath)
+	assert.Equal(t, getIPNet("10.0.0.0/16"), serverSettings.TrustedSubnet)
+}
+
+func getIPNet(cidr string) *net.IPNet {
+	_, ipNet, _ := net.ParseCIDR(cidr)
+	return ipNet
 }

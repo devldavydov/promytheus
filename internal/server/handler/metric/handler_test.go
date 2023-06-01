@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,10 +15,11 @@ import (
 
 	"github.com/devldavydov/promytheus/internal/common/cipher"
 	_http "github.com/devldavydov/promytheus/internal/common/http"
-	"github.com/devldavydov/promytheus/internal/server/middleware"
+	_middleware "github.com/devldavydov/promytheus/internal/server/middleware"
 	"github.com/devldavydov/promytheus/internal/server/mocks"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -43,14 +45,15 @@ type testRequest struct {
 }
 
 type testItem struct {
-	stgInitFunc  func(storage.Storage)
-	stgCheckFunc func() []storage.StorageItem
-	stgMockFunc  func(*mocks.MockStorage)
-	req          testRequest
-	name         string
-	resp         testResponse
-	xfail        bool
-	dbStg        bool
+	stgInitFunc   func(storage.Storage)
+	stgCheckFunc  func() []storage.StorageItem
+	stgMockFunc   func(*mocks.MockStorage)
+	req           testRequest
+	name          string
+	resp          testResponse
+	xfail         bool
+	dbStg         bool
+	trustedSubnet *net.IPNet
 }
 
 var (
@@ -96,11 +99,11 @@ func runTests(t *testing.T, tests []testItem) {
 			if tt.req.encryption {
 				cryptoPrivKey = privKey
 			}
-			mdlwrDecr := middleware.NewDecrpyt(cryptoPrivKey)
+			mdlwrDecr := _middleware.NewDecrpyt(cryptoPrivKey)
 
-			router.Use(middleware.Gzip, mdlwrDecr.Handle)
+			router.Use(middleware.RealIP, _middleware.Gzip, mdlwrDecr.Handle)
 
-			NewHandler(router, stg, tt.req.hmacKey, logger)
+			NewHandler(router, stg, tt.req.hmacKey, tt.trustedSubnet, logger)
 			ts := httptest.NewServer(router)
 			defer ts.Close()
 
@@ -188,3 +191,8 @@ func encryptString(val string) string {
 }
 
 func strPointer(s string) *string { return &s }
+
+func getIPNet(cidr string) *net.IPNet {
+	_, ipNet, _ := net.ParseCIDR(cidr)
+	return ipNet
+}

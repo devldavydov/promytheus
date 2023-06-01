@@ -19,6 +19,7 @@ import (
 //	@Param		metricValue	path	string	true	"Metric Value"
 //	@Success	200			"Updated successfully"
 //	@Failure	400			"Bad request"
+//	@Failure	403			"Forbidden"
 //	@Failure	500			"Internal error"
 //	@Failure	501			"Metric type not found"
 //	@Router		/update/{metricType}/{metricName}/{metricValue} [post]
@@ -53,6 +54,7 @@ func (handler *MetricHandler) UpdateMetric(rw http.ResponseWriter, req *http.Req
 //	@Param		message	body		metric.MetricsDTO	true	"Metric update request"
 //	@Success	200		{object}	metric.MetricsDTO	"Returns updated metric"
 //	@Failure	400		"Bad request"
+//	@Failure	403		"Forbidden"
 //	@Failure	500		"Internal error"
 //	@Failure	501		"Metric type not found"
 //	@Router		/update [post]
@@ -109,6 +111,7 @@ func (handler *MetricHandler) UpdateMetricJSON(rw http.ResponseWriter, req *http
 //	@Param		message	body	[]metric.MetricsDTO	true	"Metrics update batch request"
 //	@Success	200		{array}	array				"Returns empty array"
 //	@Failure	400		"Bad request"
+//	@Failure	403		"Forbidden"
 //	@Failure	500		"Internal error"
 //	@Failure	501		"Metric type not found"
 //	@Router		/updates [post]

@@ -1,4 +1,4 @@
-// Package metrics - base package for metric values and their functions.
+// Package metric - base package for metric values and their functions.
 package metric
 
 import "fmt"

@@ -1,10 +1,15 @@
 package server
 
-import "github.com/devldavydov/promytheus/internal/server/storage"
+import (
+	"net"
+
+	"github.com/devldavydov/promytheus/internal/server/storage"
+)
 
 type ServiceSettings struct {
 	HmacKey           *string
 	CryptoPrivKeyPath *string
+	TrustedSubnet     *net.IPNet
 	ServerAddress     string
 	DatabaseDsn       string
 	PersistSettings   storage.PersistSettings
@@ -18,6 +23,7 @@ func NewServiceSettings(
 	databaseDsn string,
 	persistSettimgs storage.PersistSettings,
 	cryptoPrivKeyPath string,
+	trustedSubnet *net.IPNet,
 ) ServiceSettings {
 	var hmac *string
 	if hmacKey != "" {
@@ -36,5 +42,6 @@ func NewServiceSettings(
 		HmacKey:           hmac,
 		DatabaseDsn:       databaseDsn,
 		CryptoPrivKeyPath: privKeyPath,
+		TrustedSubnet:     trustedSubnet,
 	}
 }

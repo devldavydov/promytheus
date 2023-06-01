@@ -59,6 +59,7 @@ func (service *Service) Start(ctx context.Context) error {
 		router,
 		stg,
 		service.settings.HmacKey,
+		service.settings.TrustedSubnet,
 		service.logger,
 	)
 

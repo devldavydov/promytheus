@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/common/iotools"
 	"github.com/devldavydov/promytheus/internal/common/metric"
+	"github.com/devldavydov/promytheus/internal/common/nettools"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,14 +35,16 @@ type HTTPPublisher struct {
 	logger               *logrus.Logger
 	failedCounterMetrics metric.Metrics
 	bufPool              *sync.Pool
+	hostIP               string
 	threadID             int
 	shutdownTimeout      time.Duration
 }
 
-type HTTPPublisherOptionalSettings struct {
+type HTTPPublisherExtraSettings struct {
 	HmacKey         *string
 	CryptoPubKey    *rsa.PublicKey
 	ShutdownTimeout *time.Duration
+	HostIP          net.IP
 }
 
 // NewHTTPPublisher creates new HTTPPublisher.
@@ -49,7 +53,7 @@ func NewHTTPPublisher(
 	metricsChan <-chan metric.Metrics,
 	threadID int,
 	logger *logrus.Logger,
-	optional HTTPPublisherOptionalSettings,
+	extra HTTPPublisherExtraSettings,
 ) *HTTPPublisher {
 	client := &http.Client{
 		Timeout: _httpClientTimeout,
@@ -57,26 +61,27 @@ func NewHTTPPublisher(
 
 	bufPool := &sync.Pool{
 		New: func() any {
-			if optional.CryptoPubKey == nil {
+			if extra.CryptoPubKey == nil {
 				return bytes.NewBuffer([]byte{})
 			}
-			return cipher.NewEncBuffer(optional.CryptoPubKey)
+			return cipher.NewEncBuffer(extra.CryptoPubKey)
 		},
 	}
 
 	shutdownTimeout := _defaultShutdownTimeout
-	if optional.ShutdownTimeout != nil {
-		shutdownTimeout = *optional.ShutdownTimeout
+	if extra.ShutdownTimeout != nil {
+		shutdownTimeout = *extra.ShutdownTimeout
 	}
 
 	return &HTTPPublisher{
 		serverAddress:   serverAddress,
-		hmacKey:         optional.HmacKey,
+		hmacKey:         extra.HmacKey,
 		httpClient:      client,
 		metricsChan:     metricsChan,
 		threadID:        threadID,
 		bufPool:         bufPool,
 		shutdownTimeout: shutdownTimeout,
+		hostIP:          extra.HostIP.String(),
 		logger:          logger,
 	}
 }
@@ -135,10 +140,14 @@ func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO
 	}
 
 	request.Header.Set("Content-Type", _http.ContentTypeApplicationJSON)
+	request.Header.Set(nettools.RealIPHeader, httpPublisher.hostIP)
 
 	response, err := httpPublisher.httpClient.Do(request)
 	if err != nil {
-		return fmt.Errorf("publisher[%d] failed to send request: %w", httpPublisher.threadID, err)
+		return fmt.Errorf("publisher[%d] failed to send request, err: %w", httpPublisher.threadID, err)
+	}
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("publisher[%d] failed to send request, code: %d", httpPublisher.threadID, response.StatusCode)
 	}
 	defer response.Body.Close()
 

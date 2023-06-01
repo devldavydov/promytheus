@@ -147,6 +147,62 @@ func TestUpdateMetric(t *testing.T) {
 				contentType: _http.ContentTypeTextPlain,
 			},
 		},
+		{
+			name: "update metric: correct gauge, wrong subnet",
+			req: testRequest{
+				method:  http.MethodPost,
+				url:     "/update/gauge/metric2/1.234",
+				headers: map[string][]string{"X-Real-IP": {"1.1.1.1"}},
+			},
+			resp: testResponse{
+				code:        http.StatusForbidden,
+				body:        "",
+				contentType: "",
+			},
+			trustedSubnet: getIPNet("10.0.0.0/16"),
+		},
+		{
+			name: "update metric: correct counter, wrong subnet",
+			req: testRequest{
+				method:  http.MethodPost,
+				url:     "/update/counter/metric2/1234",
+				headers: map[string][]string{"X-Real-IP": {"1.1.1.1"}},
+			},
+			resp: testResponse{
+				code:        http.StatusForbidden,
+				body:        "",
+				contentType: "",
+			},
+			trustedSubnet: getIPNet("10.0.0.0/16"),
+		},
+		{
+			name: "update metric: correct gauge, correct subnet",
+			req: testRequest{
+				method:  http.MethodPost,
+				url:     "/update/gauge/metric2/1.234",
+				headers: map[string][]string{"X-Real-IP": {"192.168.0.100"}},
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        http.StatusText(http.StatusOK),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			trustedSubnet: getIPNet("192.168.0.0/16"),
+		},
+		{
+			name: "update metric: correct counter, correct subnet",
+			req: testRequest{
+				method:  http.MethodPost,
+				url:     "/update/counter/metric2/1234",
+				headers: map[string][]string{"X-Real-IP": {"192.168.0.100"}},
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        http.StatusText(http.StatusOK),
+				contentType: _http.ContentTypeTextPlain,
+			},
+			trustedSubnet: getIPNet("192.168.0.0/16"),
+		},
 	}
 
 	runTests(t, tests)
@@ -449,6 +505,48 @@ func TestUpdateJsonMetric(t *testing.T) {
 			},
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("foo", 123)
+			},
+		},
+		{
+			name: "update JSON metric: correct counter with encryption, gzipped, with trusted network",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyGzipReader(encryptString(`{"id": "foo_encr_gz2", "type": "counter", "delta": 123}`)),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				headers:     map[string][]string{"Accept-Encoding": {"gzip"}, "Content-Encoding": {"gzip"}, "X-Real-IP": {"192.168.0.100"}},
+				encryption:  true,
+			},
+			resp: testResponse{
+				code:        http.StatusOK,
+				body:        `{"id":"foo_encr_gz2","type":"counter","delta":246}`,
+				contentType: _http.ContentTypeApplicationJSON,
+				headers:     map[string][]string{"Content-Encoding": {"gzip"}},
+			},
+			trustedSubnet: getIPNet("192.168.0.0/16"),
+			stgInitFunc: func(s storage.Storage) {
+				s.SetCounterMetric("foo_encr_gz2", 123)
+			},
+		},
+		{
+			name: "update JSON metric: correct counter with encryption, gzipped, with wrong network",
+			req: testRequest{
+				method:      http.MethodPost,
+				url:         "/update/",
+				body:        bodyGzipReader(encryptString(`{"id": "foo_encr_gz3", "type": "counter", "delta": 123}`)),
+				contentType: strPointer(_http.ContentTypeApplicationJSON),
+				headers:     map[string][]string{"Accept-Encoding": {"gzip"}, "Content-Encoding": {"gzip"}, "X-Real-IP": {"10.10.10.10"}},
+				encryption:  true,
+			},
+			resp: testResponse{
+				code:        http.StatusForbidden,
+				body:        "",
+				contentType: "",
+				headers:     map[string][]string{"Content-Encoding": {"gzip"}},
+			},
+			trustedSubnet: getIPNet("192.168.0.0/16"),
+			stgInitFunc: func(s storage.Storage) {
+				s.SetCounterMetric("foo_encr_gz3", 123)
 			},
 		},
 	}
@@ -917,7 +1015,7 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 			},
 		},
 		{
-			name: "update JSON metric: multiple values, encrypted and gziped",
+			name: "update JSON metric: multiple values, encrypted and gziped, with trusted subnet",
 			req: testRequest{
 				method: http.MethodPost,
 				url:    "/updates/",
@@ -932,7 +1030,7 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 				]`)),
 				contentType: strPointer(_http.ContentTypeApplicationJSON),
 				encryption:  true,
-				headers:     map[string][]string{"Accept-Encoding": {"gzip"}, "Content-Encoding": {"gzip"}},
+				headers:     map[string][]string{"Accept-Encoding": {"gzip"}, "Content-Encoding": {"gzip"}, "X-Real-IP": {"192.168.0.1"}},
 			},
 			resp: testResponse{
 				code:        http.StatusOK,
@@ -940,6 +1038,7 @@ func TestUpdateMetricJSONBatch(t *testing.T) {
 				contentType: _http.ContentTypeApplicationJSON,
 				headers:     map[string][]string{"Content-Encoding": {"gzip"}},
 			},
+			trustedSubnet: getIPNet("192.168.0.0/16"),
 			stgInitFunc: func(s storage.Storage) {
 				s.SetCounterMetric("foo_enc", 1)
 			},
