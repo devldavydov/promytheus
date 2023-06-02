@@ -22,6 +22,11 @@ mock_gen:
 	@echo "\n### $@"
 	@mockgen -destination=internal/server/mocks/mock_storage.go -package=mocks github.com/devldavydov/promytheus/internal/server/storage Storage
 
+.PHONY: proto_gen
+proto_gen:
+	@echo "\n### $@"
+	@protoc --go_out=. --go_opt=paths=import --go-grpc_out=. --go-grpc_opt=paths=import internal/grpc/proto/metric.proto
+
 .PHONY: build
 build: build_agent build_server
 
