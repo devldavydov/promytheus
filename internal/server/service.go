@@ -29,7 +29,7 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 }
 
 func (service *Service) Start(ctx context.Context) error {
-	service.logger.Infof("Server service started on [%s:%d]", service.settings.ServerAddress, service.settings.ServerPort)
+	service.logger.Infof("Server HTTP service started on [%s]", service.settings.HttpSettings.String())
 
 	// Create decryption middleware
 	cryptoPrivKey, err := service.loadCryptoPrivKey()
@@ -63,7 +63,7 @@ func (service *Service) Start(ctx context.Context) error {
 		service.logger,
 	)
 
-	httpServer := &http.Server{Addr: service.getServerFullAddr(), Handler: router}
+	httpServer := &http.Server{Addr: service.settings.HttpSettings.String(), Handler: router}
 
 	errChan := make(chan error)
 	go func(ch chan error) {
@@ -87,10 +87,6 @@ func (service *Service) Start(ctx context.Context) error {
 		service.logger.Info("Server service finished")
 		return nil
 	}
-}
-
-func (service *Service) getServerFullAddr() string {
-	return fmt.Sprintf("%s:%d", service.settings.ServerAddress, service.settings.ServerPort)
 }
 
 func (service *Service) loadCryptoPrivKey() (*rsa.PrivateKey, error) {

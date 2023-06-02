@@ -6,17 +6,16 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/devldavydov/promytheus/internal/common/env"
+	"github.com/devldavydov/promytheus/internal/common/nettools"
 	"github.com/devldavydov/promytheus/internal/server"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 )
 
 const (
-	_defaultConfigAddress       = "127.0.0.1:8080"
+	_defaultConfigHttpAddress   = "127.0.0.1:8080"
 	_defaultConfigLogLevel      = "DEBUG"
 	_defaultConfigLogFile       = "server.log"
 	_defaultconfigStoreInterval = 300 * time.Second
@@ -27,10 +26,11 @@ const (
 	_defaultCryptoPrivKeyPath   = ""
 	_defaultConfigFilePath      = ""
 	_defaultTrustedSubnet       = ""
+	_defaultConfigGrpcAddress   = ""
 )
 
 type Config struct {
-	Address           string
+	HttpAddress       string
 	StoreFile         string
 	HmacKey           string
 	DatabaseDsn       string
@@ -38,6 +38,7 @@ type Config struct {
 	LogFile           string
 	CryptoPrivKeyPath string
 	TrustedSubnet     string
+	GrpcAddress       string
 	StoreInterval     time.Duration
 	Restore           bool
 }
@@ -48,7 +49,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	config := &Config{}
 
 	// Check flags
-	flagSet.StringVar(&config.Address, "a", _defaultConfigAddress, "server address")
+	flagSet.StringVar(&config.HttpAddress, "a", _defaultConfigHttpAddress, "server HTTP address")
 	flagSet.DurationVar(&config.StoreInterval, "i", _defaultconfigStoreInterval, "store interval")
 	flagSet.StringVar(&config.StoreFile, "f", _defaultConfigStoreFile, "store file")
 	flagSet.BoolVar(&config.Restore, "r", _defaultConfigRestore, "restore")
@@ -56,6 +57,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.StringVar(&config.DatabaseDsn, "d", _defaultDatabaseDsn, "database dsn")
 	flagSet.StringVar(&config.CryptoPrivKeyPath, "crypto-key", _defaultCryptoPrivKeyPath, "crypto private key path")
 	flagSet.StringVar(&config.TrustedSubnet, "t", _defaultTrustedSubnet, "trusted subnet")
+	flagSet.StringVar(&config.GrpcAddress, "g", _defaultConfigGrpcAddress, "server GRPC address")
 	//
 	flagSet.StringVar(&configFilePath, "c", _defaultConfigFilePath, "config file path")
 	flagSet.StringVar(&configFilePath, "config", _defaultConfigFilePath, "config file path")
@@ -70,7 +72,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	}
 
 	// Check env
-	config.Address, err = env.GetVariable("ADDRESS", env.CastString, config.Address)
+	config.HttpAddress, err = env.GetVariable("ADDRESS", env.CastString, config.HttpAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +112,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.GrpcAddress, err = env.GetVariable("GRPC_ADDRESS", env.CastString, config.GrpcAddress)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -134,15 +141,9 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 }
 
 func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
-	parts := strings.Split(config.Address, ":")
-	if len(parts) != 2 {
-		return server.ServiceSettings{}, fmt.Errorf("wrong address format")
-	}
-
-	address := parts[0]
-	port, err := strconv.Atoi(parts[1])
+	httpAddress, err := nettools.NewAddress(config.HttpAddress)
 	if err != nil {
-		return server.ServiceSettings{}, fmt.Errorf("wrong address format")
+		return server.ServiceSettings{}, err
 	}
 
 	var trustedSubnet *net.IPNet
@@ -153,15 +154,24 @@ func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
 		}
 	}
 
+	var grpcAddress *nettools.Address
+	if config.GrpcAddress != "" {
+		gAddr, err := nettools.NewAddress(config.GrpcAddress)
+		if err != nil {
+			return server.ServiceSettings{}, err
+		}
+		grpcAddress = &gAddr
+	}
+
 	persistSettings := storage.NewPersistSettings(config.StoreInterval, config.StoreFile, config.Restore)
 	return server.NewServiceSettings(
-		address,
-		port,
+		httpAddress,
 		config.HmacKey,
 		config.DatabaseDsn,
 		persistSettings,
 		config.CryptoPrivKeyPath,
-		trustedSubnet), nil
+		trustedSubnet,
+		grpcAddress), nil
 }
 
 type configFile struct {
@@ -173,6 +183,7 @@ type configFile struct {
 	HmacKey           *string        `json:"hmac_key"`
 	CryptoPrivKeyPath *string        `json:"crypto_key"`
 	TrustedSubnet     *string        `json:"trusted_subnet"`
+	GrpcAddress       *string        `json:"grpc_address"`
 }
 
 func applyConfigFile(config *Config, configFilePath string) error {
@@ -191,8 +202,8 @@ func applyConfigFile(config *Config, configFilePath string) error {
 		return err
 	}
 
-	if configFromFile.Address != nil && config.Address == _defaultConfigAddress {
-		config.Address = *configFromFile.Address
+	if configFromFile.Address != nil && config.HttpAddress == _defaultConfigHttpAddress {
+		config.HttpAddress = *configFromFile.Address
 	}
 	if configFromFile.Restore != nil && config.Restore {
 		config.Restore = *configFromFile.Restore
@@ -214,6 +225,9 @@ func applyConfigFile(config *Config, configFilePath string) error {
 	}
 	if configFromFile.TrustedSubnet != nil && config.TrustedSubnet == _defaultTrustedSubnet {
 		config.TrustedSubnet = *configFromFile.TrustedSubnet
+	}
+	if configFromFile.GrpcAddress != nil && config.GrpcAddress == _defaultConfigGrpcAddress {
+		config.GrpcAddress = *configFromFile.GrpcAddress
 	}
 
 	return nil

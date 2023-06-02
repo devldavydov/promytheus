@@ -14,7 +14,6 @@ import (
 	"golang.org/x/tools/go/analysis/passes/deepequalerrors"
 	"golang.org/x/tools/go/analysis/passes/directive"
 	"golang.org/x/tools/go/analysis/passes/errorsas"
-	"golang.org/x/tools/go/analysis/passes/fieldalignment"
 	"golang.org/x/tools/go/analysis/passes/framepointer"
 	"golang.org/x/tools/go/analysis/passes/httpresponse"
 	"golang.org/x/tools/go/analysis/passes/ifaceassert"
@@ -69,7 +68,7 @@ var standardAnalyzers = []*analysis.Analyzer{
 	// defines an Analyzer that checks that the second argument to errors.As is a pointer to a type implementing error
 	errorsas.Analyzer,
 	// defines an Analyzer that detects structs that would use less memory if their fields were sorted
-	fieldalignment.Analyzer,
+	// fieldalignment.Analyzer,
 	// defines an Analyzer that reports assembly code that clobbers the frame pointer before saving it
 	framepointer.Analyzer,
 	// defines an Analyzer that checks for mistakes using HTTP responses
