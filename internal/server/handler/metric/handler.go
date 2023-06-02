@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	_http "github.com/devldavydov/promytheus/internal/common/http"
+	"github.com/devldavydov/promytheus/internal/common/metric"
 	_middleware "github.com/devldavydov/promytheus/internal/server/middleware"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5"
@@ -21,13 +22,6 @@ import (
 @Host      localhost:8080
 @BasePath  /
 */
-
-var (
-	ErrUnknownMetricType = errors.New("unknowm metric type")
-	ErrEmptyMetricName   = errors.New("empty metric name")
-	ErrWrongMetricValue  = errors.New("wrong metric value")
-	ErrMetricHashCheck   = errors.New("metric hash check fail")
-)
 
 type MetricHandler struct {
 	storage storage.Storage
@@ -63,11 +57,11 @@ func NewHandler(
 }
 
 func CreateResponseOnRequestError(rw http.ResponseWriter, err error) {
-	if errors.Is(err, ErrUnknownMetricType) {
+	if errors.Is(err, metric.ErrUnknownMetricType) {
 		_http.CreateStatusResponse(rw, http.StatusNotImplemented)
 		return
 	}
-	if errors.Is(err, ErrMetricHashCheck) {
+	if errors.Is(err, metric.ErrMetricHashCheck) {
 		_http.CreateStatusResponse(rw, http.StatusBadRequest)
 		return
 	}

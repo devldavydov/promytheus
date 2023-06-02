@@ -8,7 +8,7 @@ import (
 )
 
 type ServiceSettings struct {
-	HttpSettings      nettools.Address
+	HTTPSettings      nettools.Address
 	DatabaseDsn       string
 	PersistSettings   storage.PersistSettings
 	HmacKey           *string
@@ -37,7 +37,7 @@ func NewServiceSettings(
 	}
 
 	return ServiceSettings{
-		HttpSettings:      httpSettings,
+		HTTPSettings:      httpSettings,
 		PersistSettings:   persistSettimgs,
 		HmacKey:           hmac,
 		DatabaseDsn:       databaseDsn,

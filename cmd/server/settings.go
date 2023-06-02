@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	_defaultConfigHttpAddress   = "127.0.0.1:8080"
+	_defaultConfigHTTPAddress   = "127.0.0.1:8080"
 	_defaultConfigLogLevel      = "DEBUG"
 	_defaultConfigLogFile       = "server.log"
 	_defaultconfigStoreInterval = 300 * time.Second
@@ -30,7 +30,7 @@ const (
 )
 
 type Config struct {
-	HttpAddress       string
+	HTTPAddress       string
 	StoreFile         string
 	HmacKey           string
 	DatabaseDsn       string
@@ -49,7 +49,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	config := &Config{}
 
 	// Check flags
-	flagSet.StringVar(&config.HttpAddress, "a", _defaultConfigHttpAddress, "server HTTP address")
+	flagSet.StringVar(&config.HTTPAddress, "a", _defaultConfigHTTPAddress, "server HTTP address")
 	flagSet.DurationVar(&config.StoreInterval, "i", _defaultconfigStoreInterval, "store interval")
 	flagSet.StringVar(&config.StoreFile, "f", _defaultConfigStoreFile, "store file")
 	flagSet.BoolVar(&config.Restore, "r", _defaultConfigRestore, "restore")
@@ -72,7 +72,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	}
 
 	// Check env
-	config.HttpAddress, err = env.GetVariable("ADDRESS", env.CastString, config.HttpAddress)
+	config.HTTPAddress, err = env.GetVariable("ADDRESS", env.CastString, config.HTTPAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 }
 
 func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
-	httpAddress, err := nettools.NewAddress(config.HttpAddress)
+	httpAddress, err := nettools.NewAddress(config.HTTPAddress)
 	if err != nil {
 		return server.ServiceSettings{}, err
 	}
@@ -202,8 +202,8 @@ func applyConfigFile(config *Config, configFilePath string) error {
 		return err
 	}
 
-	if configFromFile.Address != nil && config.HttpAddress == _defaultConfigHttpAddress {
-		config.HttpAddress = *configFromFile.Address
+	if configFromFile.Address != nil && config.HTTPAddress == _defaultConfigHTTPAddress {
+		config.HTTPAddress = *configFromFile.Address
 	}
 	if configFromFile.Restore != nil && config.Restore {
 		config.Restore = *configFromFile.Restore

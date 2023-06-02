@@ -15,6 +15,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/swaggo/swag v1.16.1
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
+	golang.org/x/sync v0.1.0
 	golang.org/x/tools v0.7.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0
