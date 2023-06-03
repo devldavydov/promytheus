@@ -30,11 +30,10 @@ type Publisher interface {
 type Service struct {
 	logger                      *logrus.Logger
 	failedPublishCounterMetrics metric.Metrics
-	publisherFactory            func(threadID int, cryptoPubKey *rsa.PublicKey) Publisher
+	publisherFactory            PublisherFactory
 	metricsChan                 chan metric.Metrics
 	collectors                  []Collector
 	settings                    ServiceSettings
-	shutdownTimeout             time.Duration
 }
 
 // NewService creates new agent service.
@@ -56,20 +55,9 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 		logger:      logger,
 		collectors:  collectors,
 		metricsChan: ch,
-		publisherFactory: func(threadID int, cryptoPubKey *rsa.PublicKey) Publisher {
-			return publisher.NewHTTPPublisher(
-				settings.ServerAddress,
-				ch,
-				threadID,
-				logger,
-				publisher.HTTPPublisherExtraSettings{
-					HmacKey:         settings.HmacKey,
-					CryptoPubKey:    cryptoPubKey,
-					ShutdownTimeout: &shutdownTimeout,
-					HostIP:          hostIP,
-				})
-		},
-		shutdownTimeout: shutdownTimeout,
+		publisherFactory: CreatePublisherFactory(
+			settings, shutdownTimeout, ch, hostIP, logger,
+		),
 	}, nil
 }
 
@@ -77,10 +65,12 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 func (service *Service) Start(ctx context.Context) error {
 	service.logger.Info("Agent service started")
 
-	cryptoPubKey, err := service.loadCryptoPubKey()
+	// TODO check HTTP/GRPC - key or TLS
+	cryptoPubKey, err := service.loadHTTPCryptoPubKey()
 	if err != nil {
 		return err
 	}
+	encrSettings := publisher.EncryptionSettings{CryptoPubKey: cryptoPubKey}
 
 	var wg sync.WaitGroup
 
@@ -96,7 +86,7 @@ func (service *Service) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func(ctx context.Context, threadID int) {
 			defer wg.Done()
-			service.publisherFactory(threadID, cryptoPubKey).Publish()
+			service.publisherFactory(threadID, encrSettings).Publish()
 		}(ctx, i+1)
 	}
 
@@ -133,7 +123,7 @@ func (service *Service) startMainLoop(ctx context.Context) {
 	}
 }
 
-func (service *Service) loadCryptoPubKey() (*rsa.PublicKey, error) {
+func (service *Service) loadHTTPCryptoPubKey() (*rsa.PublicKey, error) {
 	if service.settings.CryptoPubKeyPath == nil {
 		return nil, nil
 	}

@@ -21,6 +21,7 @@ const (
 	_defaultRateLimit            = 2
 	_defaultCryptoPubKeyPath     = ""
 	_defaultConfigFilePath       = ""
+	_defaultUseGRPC              = false
 )
 
 type Config struct {
@@ -32,6 +33,7 @@ type Config struct {
 	ReportInterval   time.Duration
 	PollInterval     time.Duration
 	RateLimit        int
+	UseGRPC          bool
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
@@ -45,6 +47,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
 	flagSet.IntVar(&config.RateLimit, "l", _defaultRateLimit, "rate limit")
 	flagSet.StringVar(&config.CryptoPubKeyPath, "crypto-key", _defaultCryptoPubKeyPath, "crypto public key path")
+	flagSet.BoolVar(&config.UseGRPC, "g", _defaultUseGRPC, "use GRPC insted of HTTP")
 	//
 	flagSet.StringVar(&configFilePath, "c", _defaultConfigFilePath, "config file path")
 	flagSet.StringVar(&configFilePath, "config", _defaultConfigFilePath, "config file path")
@@ -88,6 +91,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.UseGRPC, err = env.GetVariable("USE_GRPC", env.CastBool, config.UseGRPC)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -113,12 +121,13 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 
 func AgentSettingsAdapt(config *Config) (agent.ServiceSettings, error) {
 	agentSettings, err := agent.NewServiceSettings(
-		"http://"+config.Address,
+		config.Address,
 		config.PollInterval,
 		config.ReportInterval,
 		config.HmacKey,
 		config.RateLimit,
-		config.CryptoPubKeyPath)
+		config.CryptoPubKeyPath,
+		config.UseGRPC)
 	if err != nil {
 		return agent.ServiceSettings{}, err
 	}
@@ -132,6 +141,7 @@ type configFile struct {
 	HmacKey          *string        `json:"hmac_key"`
 	RateLimit        *int           `json:"rate_limit"`
 	CryptoPubKeyPath *string        `json:"crypto_key"`
+	UseGRPC          *bool          `json:"use_grpc"`
 }
 
 func applyConfigFile(config *Config, configFilePath string) error {
@@ -167,6 +177,9 @@ func applyConfigFile(config *Config, configFilePath string) error {
 	}
 	if configFromFile.CryptoPubKeyPath != nil && config.CryptoPubKeyPath == _defaultCryptoPubKeyPath {
 		config.CryptoPubKeyPath = *configFromFile.CryptoPubKeyPath
+	}
+	if configFromFile.UseGRPC != nil && !config.UseGRPC {
+		config.UseGRPC = *configFromFile.UseGRPC
 	}
 
 	return nil

@@ -4,12 +4,9 @@ package publisher
 import (
 	"bytes"
 	"context"
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
-	"net/url"
 	"sync"
 	"time"
 
@@ -22,13 +19,12 @@ import (
 )
 
 const (
-	_httpClientTimeout      = 1 * time.Second
-	_defaultShutdownTimeout = 5 * time.Second
+	_httpClientTimeout = 1 * time.Second
 )
 
 // HTTPPublisher is a HTTP metric publisher.
 type HTTPPublisher struct {
-	serverAddress        *url.URL
+	serverAddress        nettools.Address
 	hmacKey              *string
 	httpClient           *http.Client
 	metricsChan          <-chan metric.Metrics
@@ -40,20 +36,13 @@ type HTTPPublisher struct {
 	shutdownTimeout      time.Duration
 }
 
-type HTTPPublisherExtraSettings struct {
-	HmacKey         *string
-	CryptoPubKey    *rsa.PublicKey
-	ShutdownTimeout *time.Duration
-	HostIP          net.IP
-}
-
 // NewHTTPPublisher creates new HTTPPublisher.
 func NewHTTPPublisher(
-	serverAddress *url.URL,
+	serverAddress nettools.Address,
 	metricsChan <-chan metric.Metrics,
 	threadID int,
 	logger *logrus.Logger,
-	extra HTTPPublisherExtraSettings,
+	extra PublisherExtraSettings,
 ) *HTTPPublisher {
 	client := &http.Client{
 		Timeout: _httpClientTimeout,
@@ -61,10 +50,10 @@ func NewHTTPPublisher(
 
 	bufPool := &sync.Pool{
 		New: func() any {
-			if extra.CryptoPubKey == nil {
+			if extra.EncrSettings.CryptoPubKey == nil {
 				return bytes.NewBuffer([]byte{})
 			}
-			return cipher.NewEncBuffer(extra.CryptoPubKey)
+			return cipher.NewEncBuffer(extra.EncrSettings.CryptoPubKey)
 		},
 	}
 
@@ -92,18 +81,18 @@ func (httpPublisher *HTTPPublisher) Publish() {
 	}
 	// If channel closed, try to send failed metrics and exit
 	httpPublisher.shutdown()
-	httpPublisher.logger.Infof("Publisher[%d] thread shutdown due to context closed", httpPublisher.threadID)
+	httpPublisher.logger.Infof("HTTP publisher[%d] thread shutdown due to context closed", httpPublisher.threadID)
 }
 
 func (httpPublisher *HTTPPublisher) processMetrics(metricsList []metric.Metrics) {
 	var counterMetricsToSend = make(metric.Metrics)
 
-	httpPublisher.logger.Debugf("Publisher[%d] publishing metrics: %+v", httpPublisher.threadID, metricsList)
+	httpPublisher.logger.Debugf("HTTP publisher[%d] publishing metrics: %+v", httpPublisher.threadID, metricsList)
 
 	metricReq := make([]metric.MetricsDTO, 0, totalMetrics(metricsList))
 
 	iterateMetrics(metricsList, func(name string, value metric.MetricValue) {
-		metricReq = append(metricReq, httpPublisher.prepareMetric(name, value))
+		metricReq = append(metricReq, prepareMetric(name, value, httpPublisher.hmacKey))
 
 		if value.TypeName() == metric.CounterTypeName {
 			curVal, ok := counterMetricsToSend[name]
@@ -116,7 +105,7 @@ func (httpPublisher *HTTPPublisher) processMetrics(metricsList []metric.Metrics)
 	})
 
 	if err := httpPublisher.publishMetrics(metricReq); err != nil {
-		httpPublisher.logger.Errorf("publisher[%d] failed to publish: %v", httpPublisher.threadID, err)
+		httpPublisher.logger.Errorf("HTTP publisher[%d] failed to publish: %v", httpPublisher.threadID, err)
 		httpPublisher.failedCounterMetrics = counterMetricsToSend
 		return
 	}
@@ -131,12 +120,16 @@ func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO
 	buf.Reset()
 	json.NewEncoder(buf).Encode(metricReq)
 
-	request, err := http.NewRequest(
+	ctx, cancel := context.WithTimeout(context.Background(), _defaultRequestTimeout)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(
+		ctx,
 		http.MethodPost,
-		httpPublisher.serverAddress.JoinPath("updates/").String(),
+		fmt.Sprintf("http://%s/updates/", httpPublisher.serverAddress.String()),
 		buf)
 	if err != nil {
-		return fmt.Errorf("publisher[%d] failed to create request: %w", httpPublisher.threadID, err)
+		return fmt.Errorf("HTTP publisher[%d] failed to create request: %w", httpPublisher.threadID, err)
 	}
 
 	request.Header.Set("Content-Type", _http.ContentTypeApplicationJSON)
@@ -152,26 +145,6 @@ func (httpPublisher *HTTPPublisher) publishMetrics(metricReq []metric.MetricsDTO
 	defer response.Body.Close()
 
 	return nil
-}
-
-func (httpPublisher *HTTPPublisher) prepareMetric(metricName string, metricValue metric.MetricValue) metric.MetricsDTO {
-	metricReq := metric.MetricsDTO{
-		ID:    metricName,
-		MType: metricValue.TypeName(),
-	}
-
-	if metric.GaugeTypeName == metricValue.TypeName() {
-		metricReq.Value = metricValue.(metric.Gauge).FloatP()
-	} else if metric.CounterTypeName == metricValue.TypeName() {
-		metricReq.Delta = metricValue.(metric.Counter).IntP()
-	}
-
-	if httpPublisher.hmacKey != nil {
-		hash := metricValue.Hmac(metricName, *httpPublisher.hmacKey)
-		metricReq.Hash = &hash
-	}
-
-	return metricReq
 }
 
 func (httpPublisher *HTTPPublisher) shutdown() {
@@ -197,20 +170,4 @@ func (httpPublisher *HTTPPublisher) shutdown() {
 			return
 		}
 	}
-}
-
-func iterateMetrics(metricsList []metric.Metrics, fn func(name string, value metric.MetricValue)) {
-	for _, metrics := range metricsList {
-		for name, value := range metrics {
-			fn(name, value)
-		}
-	}
-}
-
-func totalMetrics(metricsList []metric.Metrics) int {
-	cnt := 0
-	for _, m := range metricsList {
-		cnt += len(m)
-	}
-	return cnt
 }
