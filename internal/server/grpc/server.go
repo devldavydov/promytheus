@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type Server struct {
@@ -27,27 +28,22 @@ func NewServer(stg storage.Storage, hmacKey *string, logger *logrus.Logger) *grp
 	return srv
 }
 
-func (s *Server) UpdateMetrics(ctx context.Context, in *pb.UpdateMetricsRequest) (*pb.UpdateMetricsResponse, error) {
-	resp := &pb.UpdateMetricsResponse{}
-
+func (s *Server) UpdateMetrics(ctx context.Context, in *pb.UpdateMetricsRequest) (*pb.EmptyResponse, error) {
 	metrics, err := s.parseUpdateRequest(in.Metrics)
 	if err != nil {
-		resp.Result = getResult(err)
-		return resp, err
+		return nil, getErrorStatus(err)
 	}
 
-	err = s.storage.SetMetrics(metrics)
-	resp.Result = getResult(err)
-	return resp, err
+	if err = s.storage.SetMetrics(metrics); err != nil {
+		return nil, getErrorStatus(err)
+	}
+	return &pb.EmptyResponse{}, nil
 }
 
 func (s *Server) GetAllMetrics(ctx context.Context, in *pb.EmptyRequest) (*pb.GetAllMetricsResponse, error) {
-	resp := &pb.GetAllMetricsResponse{}
-
 	metrics, err := s.storage.GetAllMetrics()
 	if err != nil {
-		resp.Result = getResult(err)
-		return resp, err
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	resMetrics := make([]*pb.Metric, 0, len(metrics))
@@ -62,22 +58,55 @@ func (s *Server) GetAllMetrics(ctx context.Context, in *pb.EmptyRequest) (*pb.Ge
 			res.Type = pb.MetricType_GAUGE
 			res.Value = *item.Value.(metric.Gauge).FloatP()
 		}
+		if s.hmacKey != nil {
+			res.Hash = item.Value.Hmac(item.MetricName, *s.hmacKey)
+		}
 
 		resMetrics = append(resMetrics, res)
 	}
 
-	resp.Result = getResult(nil)
-	resp.Metrics = resMetrics
+	return &pb.GetAllMetricsResponse{Metrics: resMetrics}, nil
+}
+
+func (s *Server) GetMetric(ctx context.Context, in *pb.GetMetricRequest) (*pb.GetMetricResponse, error) {
+	if in.Id == "" {
+		return nil, getErrorStatus(metric.ErrEmptyMetricName)
+	}
+
+	resp := &pb.GetMetricResponse{Metric: &pb.Metric{Id: in.Id}}
+	var val metric.MetricValue
+	if in.Type == pb.MetricType_COUNTER {
+		cnt, err := s.storage.GetCounterMetric(in.Id)
+		if err != nil {
+			return nil, getErrorStatus(err)
+		}
+		resp.Metric.Type = pb.MetricType_COUNTER
+		resp.Metric.Delta = *cnt.IntP()
+		val = cnt
+	} else if in.Type == pb.MetricType_GAUGE {
+		gg, err := s.storage.GetGaugeMetric(in.Id)
+		if err != nil {
+			return nil, getErrorStatus(err)
+		}
+		resp.Metric.Type = pb.MetricType_GAUGE
+		resp.Metric.Value = *gg.FloatP()
+		val = gg
+	} else {
+		return nil, getErrorStatus(metric.ErrUnknownMetricType)
+	}
+
+	if s.hmacKey != nil {
+		resp.Metric.Hash = val.Hmac(in.Id, *s.hmacKey)
+	}
 
 	return resp, nil
 }
 
-func (s *Server) Ping(ctx context.Context, in *pb.EmptyRequest) (*pb.PingResponse, error) {
-	resp := &pb.PingResponse{Result: getResult(nil)}
+func (s *Server) Ping(ctx context.Context, in *pb.EmptyRequest) (*pb.EmptyResponse, error) {
 	if !s.storage.Ping() {
-		resp.Result = uint32(codes.Internal)
+		return nil, status.Errorf(codes.Internal, "ping failed")
 	}
-	return resp, nil
+	return &pb.EmptyResponse{}, nil
 }
 
 func (s *Server) parseUpdateRequest(inMetrics []*pb.Metric) ([]storage.StorageItem, error) {
@@ -129,22 +158,28 @@ func (s *Server) hmacCheck(reqHash string, reqID string, value metric.MetricValu
 	return nil
 }
 
-func getResult(err error) uint32 {
+func getErrorStatus(err error) error {
 	if err == nil {
-		return uint32(codes.OK)
+		return nil
 	}
 
-	var res codes.Code
+	var code codes.Code
+	var msg string
 
-	if errors.Is(err, metric.ErrUnknownMetricType) {
-		res = codes.Unimplemented
-	} else if errors.Is(err, metric.ErrMetricHashCheck) ||
-		errors.Is(err, metric.ErrEmptyMetricName) ||
-		errors.Is(err, metric.ErrWrongMetricValue) {
-		res = codes.InvalidArgument
-	} else {
-		res = codes.Internal
+	switch {
+	case errors.Is(err, metric.ErrUnknownMetricType):
+		code, msg = codes.Unimplemented, err.Error()
+	case errors.Is(err, metric.ErrMetricHashCheck):
+		code, msg = codes.InvalidArgument, err.Error()
+	case errors.Is(err, metric.ErrEmptyMetricName):
+		code, msg = codes.InvalidArgument, err.Error()
+	case errors.Is(err, metric.ErrWrongMetricValue):
+		code, msg = codes.InvalidArgument, err.Error()
+	case errors.Is(err, storage.ErrMetricNotFound):
+		code, msg = codes.NotFound, err.Error()
+	default:
+		code, msg = codes.NotFound, "internal error"
 	}
 
-	return uint32(res)
+	return status.Error(code, msg)
 }

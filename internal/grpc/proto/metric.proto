@@ -20,12 +20,10 @@ message Metric {
 
 message EmptyRequest {}
 
+message EmptyResponse {}
+
 message UpdateMetricsRequest {
   repeated Metric metrics = 1;
-}
-
-message UpdateMetricsResponse {
-  uint32 result = 1;
 }
 
 message GetMetricRequest {
@@ -35,21 +33,15 @@ message GetMetricRequest {
 
 message GetMetricResponse {
   Metric  metric = 1;
-  uint32  result = 2;
 }
 
 message GetAllMetricsResponse {
   repeated Metric metrics = 1;
-  uint32          result  = 2;
-}
-
-message PingResponse {
-  uint32 result = 1;
 }
 
 service MetricService {
-  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
+  rpc UpdateMetrics(UpdateMetricsRequest) returns (EmptyResponse);
   rpc GetMetric(GetMetricRequest) returns (GetMetricResponse);
   rpc GetAllMetrics(EmptyRequest) returns (GetAllMetricsResponse);
-  rpc Ping(EmptyRequest) returns (PingResponse);
+  rpc Ping(EmptyRequest) returns (EmptyResponse);
 }

@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -46,21 +47,18 @@ func (gs *GrpcServerSuite) TestPing() {
 	defer cancel()
 
 	for _, tt := range []struct {
-		name     string
-		respCode codes.Code
+		name string
 	}{
-		{name: "success", respCode: codes.OK},
+		{name: "success"},
 	} {
 		tt := tt
 		gs.Run(tt.name, func() {
 			gs.createTestServer(nil)
-			resp, err := gs.testSrv.Ping(ctx, &pb.EmptyRequest{})
+			_, err := gs.testClt.Ping(ctx, &pb.EmptyRequest{})
 
 			gs.NoError(err)
-			gs.Equal(tt.respCode, codes.Code(resp.Result))
 		})
 	}
-
 }
 
 func (gs *GrpcServerSuite) TestUpdateMetrics() {
@@ -172,14 +170,15 @@ func (gs *GrpcServerSuite) TestUpdateMetrics() {
 				tt.stgInitFunc()
 			}
 
-			resp, err := gs.testSrv.UpdateMetrics(ctx, tt.req)
+			_, err := gs.testClt.UpdateMetrics(ctx, tt.req)
 			if tt.respErr != nil {
-				gs.Equal(tt.respErr.Error(), err.Error())
+				respStatus, ok := status.FromError(err)
+				gs.True(ok)
+				gs.Equal(tt.respCode, respStatus.Code())
+				gs.Equal(tt.respErr.Error(), respStatus.Message())
 			} else {
 				gs.NoError(err)
 			}
-
-			gs.Equal(tt.respCode, codes.Code(resp.Result))
 
 			if tt.stgCheckFunc != nil {
 				tt.stgCheckFunc()
@@ -194,29 +193,173 @@ func (gs *GrpcServerSuite) TestGetAllMetrics() {
 
 	gs.Run("empty storage", func() {
 		gs.createTestServer(nil)
-		resp, err := gs.testSrv.GetAllMetrics(ctx, &pb.EmptyRequest{})
+		resp, err := gs.testClt.GetAllMetrics(ctx, &pb.EmptyRequest{})
 		gs.NoError(err)
-		gs.Equal(codes.OK, codes.Code(resp.Result))
 		gs.Equal(0, len(resp.Metrics))
 	})
 
-	gs.Run("get from storage", func() {
-		gs.createTestServer(nil)
+	gs.Run("get from storage with hash", func() {
+		gs.createTestServer(strPointer("foobar"))
 
 		gs.stg.SetCounterMetric("counter", metric.Counter(123))
 		gs.stg.SetGaugeMetric("gauge", metric.Gauge(123.123))
 
 		resp, err := gs.testSrv.GetAllMetrics(ctx, &pb.EmptyRequest{})
 		gs.NoError(err)
-		gs.Equal(codes.OK, codes.Code(resp.Result))
 		gs.Equal(2, len(resp.Metrics))
 
 		gs.Equal(pb.MetricType_COUNTER, resp.Metrics[0].Type)
 		gs.Equal(int64(123), resp.Metrics[0].Delta)
+		gs.Equal("c80d8c33875ffba1d06c517749b210aaa3ca9aceb8e2019f64626c66f117da3d", resp.Metrics[0].Hash)
 
 		gs.Equal(pb.MetricType_GAUGE, resp.Metrics[1].Type)
 		gs.Equal(float64(123.123), resp.Metrics[1].Value)
+		gs.Equal("45a63e4085f263e02fd473e1bcc46f563107662a59a9c53678a59f3fc17e8b62", resp.Metrics[1].Hash)
 	})
+}
+
+func (gs *GrpcServerSuite) TestGetMetric() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, tt := range []struct {
+		name        string
+		req         *pb.GetMetricRequest
+		hmacKey     *string
+		stgInitFunc func()
+		resp        *pb.GetMetricResponse
+		respCode    codes.Code
+		respErr     error
+	}{
+		{
+			name: "get unknown metric",
+			req: &pb.GetMetricRequest{
+				Type: pb.MetricType_UNKNOWN,
+				Id:   "foo",
+			},
+			respCode: codes.Unimplemented,
+			respErr:  metric.ErrUnknownMetricType,
+		},
+		{
+			name: "empty metric name",
+			req: &pb.GetMetricRequest{
+				Type: pb.MetricType_COUNTER,
+				Id:   "",
+			},
+			respCode: codes.InvalidArgument,
+			respErr:  metric.ErrEmptyMetricName,
+		},
+		{
+			name: "counter not found",
+			req: &pb.GetMetricRequest{
+				Type: pb.MetricType_COUNTER,
+				Id:   "counter",
+			},
+			respCode: codes.NotFound,
+			respErr:  storage.ErrMetricNotFound,
+		},
+		{
+			name: "gauge not found",
+			req: &pb.GetMetricRequest{
+				Type: pb.MetricType_GAUGE,
+				Id:   "gauge",
+			},
+			respCode: codes.NotFound,
+			respErr:  storage.ErrMetricNotFound,
+		},
+		{
+			name: "get counter",
+			req: &pb.GetMetricRequest{
+				Type: pb.MetricType_COUNTER,
+				Id:   "counter",
+			},
+			resp: &pb.GetMetricResponse{
+				Metric: &pb.Metric{
+					Type:  pb.MetricType_COUNTER,
+					Id:    "counter",
+					Delta: 123,
+				},
+			},
+			stgInitFunc: func() {
+				gs.stg.SetCounterMetric("counter", metric.Counter(123))
+			},
+		},
+		{
+			name: "get counter with hash",
+			req: &pb.GetMetricRequest{
+				Type: pb.MetricType_COUNTER,
+				Id:   "counter",
+			},
+			resp: &pb.GetMetricResponse{
+				Metric: &pb.Metric{
+					Type:  pb.MetricType_COUNTER,
+					Id:    "counter",
+					Delta: 123,
+					Hash:  "c80d8c33875ffba1d06c517749b210aaa3ca9aceb8e2019f64626c66f117da3d",
+				},
+			},
+			hmacKey: strPointer("foobar"),
+			stgInitFunc: func() {
+				gs.stg.SetCounterMetric("counter", metric.Counter(123))
+			},
+		},
+		{
+			name: "get gauge",
+			req: &pb.GetMetricRequest{
+				Type: pb.MetricType_GAUGE,
+				Id:   "gauge",
+			},
+			resp: &pb.GetMetricResponse{
+				Metric: &pb.Metric{
+					Type:  pb.MetricType_GAUGE,
+					Id:    "gauge",
+					Value: 123.123,
+				},
+			},
+			stgInitFunc: func() {
+				gs.stg.SetGaugeMetric("gauge", metric.Gauge(123.123))
+			},
+		},
+		{
+			name: "get gauge with hash",
+			req: &pb.GetMetricRequest{
+				Type: pb.MetricType_GAUGE,
+				Id:   "gauge",
+			},
+			resp: &pb.GetMetricResponse{
+				Metric: &pb.Metric{
+					Type:  pb.MetricType_GAUGE,
+					Id:    "gauge",
+					Value: 123.123,
+					Hash:  "45a63e4085f263e02fd473e1bcc46f563107662a59a9c53678a59f3fc17e8b62",
+				},
+			},
+			hmacKey: strPointer("foobar"),
+			stgInitFunc: func() {
+				gs.stg.SetGaugeMetric("gauge", metric.Gauge(123.123))
+			},
+		},
+	} {
+		tt := tt
+		gs.Run(tt.name, func() {
+			gs.createTestServer(tt.hmacKey)
+
+			if tt.stgInitFunc != nil {
+				tt.stgInitFunc()
+			}
+
+			resp, err := gs.testClt.GetMetric(ctx, tt.req)
+			if tt.respErr != nil {
+				respStatus, ok := status.FromError(err)
+				gs.True(ok)
+				gs.Equal(tt.respCode, respStatus.Code())
+				gs.Equal(tt.respErr.Error(), respStatus.Message())
+			} else {
+				gs.NoError(err)
+				gs.Equal(tt.resp.Metric, resp.Metric)
+			}
+		})
+	}
 }
 
 func (gs *GrpcServerSuite) createTestServer(hmacKey *string) {
