@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 
 	"github.com/devldavydov/promytheus/internal/common/hash"
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	pb "github.com/devldavydov/promytheus/internal/grpc"
+	"github.com/devldavydov/promytheus/internal/grpc/interceptor"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -25,10 +27,13 @@ type Server struct {
 	logger  *logrus.Logger
 }
 
-func NewServer(stg storage.Storage, hmacKey *string, logger *logrus.Logger) *grpc.Server {
-	srv := grpc.NewServer()
-	pb.RegisterMetricServiceServer(srv, &Server{storage: stg, hmacKey: hmacKey, logger: logger})
-	return srv
+func NewServer(stg storage.Storage, hmacKey *string, trustedSubnet *net.IPNet, logger *logrus.Logger) (*grpc.Server, *Server) {
+	grpcSrv := grpc.NewServer(
+		grpc.UnaryInterceptor(interceptor.NewTrustedSubnetInterceptor(trustedSubnet, []string{"/grpc.MetricService/UpdateMetrics"}).Handle),
+	)
+	srv := &Server{storage: stg, hmacKey: hmacKey, logger: logger}
+	pb.RegisterMetricServiceServer(grpcSrv, srv)
+	return grpcSrv, srv
 }
 
 func (s *Server) UpdateMetrics(ctx context.Context, in *pb.UpdateMetricsRequest) (*pb.EmptyResponse, error) {

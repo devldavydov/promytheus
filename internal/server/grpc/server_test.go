@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/devldavydov/promytheus/internal/common/metric"
+	"github.com/devldavydov/promytheus/internal/common/nettools"
 	pb "github.com/devldavydov/promytheus/internal/grpc"
 	"github.com/devldavydov/promytheus/internal/grpc/interceptor"
 	"github.com/devldavydov/promytheus/internal/server/storage"
@@ -16,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -48,13 +50,15 @@ func (gs *GrpcServerSuite) TestPing() {
 	defer cancel()
 
 	for _, tt := range []struct {
-		name string
+		name          string
+		trustedSubnet *net.IPNet
 	}{
 		{name: "success"},
+		{name: "ignore subnet check", trustedSubnet: getSubnet("10.0.0.0/16")},
 	} {
 		tt := tt
 		gs.Run(tt.name, func() {
-			gs.createTestServer(nil)
+			gs.createTestServer(nil, tt.trustedSubnet)
 			_, err := gs.testClt.Ping(ctx, &pb.EmptyRequest{})
 
 			gs.NoError(err)
@@ -67,13 +71,15 @@ func (gs *GrpcServerSuite) TestUpdateMetrics() {
 	defer cancel()
 
 	for _, tt := range []struct {
-		name         string
-		req          *pb.UpdateMetricsRequest
-		hmacKey      *string
-		stgInitFunc  func()
-		stgCheckFunc func()
-		respCode     codes.Code
-		respErr      error
+		name          string
+		req           *pb.UpdateMetricsRequest
+		hmacKey       *string
+		trustedSubnet *net.IPNet
+		cltIP         *string
+		stgInitFunc   func()
+		stgCheckFunc  func()
+		respCode      codes.Code
+		respErr       error
 	}{
 		{
 			name:     "unknown metric type",
@@ -162,16 +168,64 @@ func (gs *GrpcServerSuite) TestUpdateMetrics() {
 			hmacKey: strPointer("foobar"),
 			respErr: errors.New("incorrect gauge 'Sys': metric hash check fail"),
 		},
+		{
+			name:     "correct update with subnet check",
+			respCode: codes.OK,
+			req: &pb.UpdateMetricsRequest{
+				Metrics: []*pb.Metric{
+					{Type: pb.MetricType_COUNTER, Id: "counter1", Delta: 1},
+					{Type: pb.MetricType_GAUGE, Id: "gauge1", Value: 123.123},
+					{Type: pb.MetricType_COUNTER, Id: "counter1", Delta: 2},
+					{Type: pb.MetricType_COUNTER, Id: "counter2", Delta: 3},
+				},
+			},
+			trustedSubnet: getSubnet("192.168.0.0/16"),
+			cltIP:         strPointer("192.168.1.1"),
+			stgInitFunc: func() {
+				gs.stg.SetCounterMetric("counter2", metric.Counter(2))
+			},
+			stgCheckFunc: func() {
+				vC, _ := gs.stg.GetCounterMetric("counter1")
+				gs.Equal(metric.Counter(3), vC)
+
+				vC, _ = gs.stg.GetCounterMetric("counter2")
+				gs.Equal(metric.Counter(5), vC)
+
+				vG, _ := gs.stg.GetGaugeMetric("gauge1")
+				gs.Equal(metric.Gauge(123.123), vG)
+			},
+		},
+		{
+			name: "update failed because of subnet check",
+			req: &pb.UpdateMetricsRequest{
+				Metrics: []*pb.Metric{
+					{Type: pb.MetricType_COUNTER, Id: "counter1", Delta: 1},
+					{Type: pb.MetricType_GAUGE, Id: "gauge1", Value: 123.123},
+					{Type: pb.MetricType_COUNTER, Id: "counter1", Delta: 2},
+					{Type: pb.MetricType_COUNTER, Id: "counter2", Delta: 3},
+				},
+			},
+			trustedSubnet: getSubnet("192.168.0.0/16"),
+			cltIP:         strPointer("10.10.1.1"),
+			respCode:      codes.PermissionDenied,
+			respErr:       errors.New("forbidden"),
+		},
 	} {
 		tt := tt
 		gs.Run(tt.name, func() {
-			gs.createTestServer(tt.hmacKey)
+			gs.createTestServer(tt.hmacKey, tt.trustedSubnet)
 
 			if tt.stgInitFunc != nil {
 				tt.stgInitFunc()
 			}
 
-			_, err := gs.testClt.UpdateMetrics(ctx, tt.req)
+			cltCtx := ctx
+			if tt.cltIP != nil {
+				md := metadata.New(map[string]string{nettools.RealIPHeader: *tt.cltIP})
+				cltCtx = metadata.NewOutgoingContext(ctx, md)
+			}
+
+			_, err := gs.testClt.UpdateMetrics(cltCtx, tt.req)
 			if tt.respErr != nil {
 				respStatus, ok := status.FromError(err)
 				gs.True(ok)
@@ -193,14 +247,14 @@ func (gs *GrpcServerSuite) TestGetAllMetrics() {
 	defer cancel()
 
 	gs.Run("empty storage", func() {
-		gs.createTestServer(nil)
+		gs.createTestServer(nil, nil)
 		resp, err := gs.testClt.GetAllMetrics(ctx, &pb.EmptyRequest{})
 		gs.NoError(err)
 		gs.Equal(0, len(resp.Metrics))
 	})
 
-	gs.Run("get from storage with hash", func() {
-		gs.createTestServer(strPointer("foobar"))
+	gs.Run("get from storage with hash and ignore subnet check", func() {
+		gs.createTestServer(strPointer("foobar"), getSubnet("10.0.0.0/16"))
 
 		gs.stg.SetCounterMetric("counter", metric.Counter(123))
 		gs.stg.SetGaugeMetric("gauge", metric.Gauge(123.123))
@@ -224,13 +278,14 @@ func (gs *GrpcServerSuite) TestGetMetric() {
 	defer cancel()
 
 	for _, tt := range []struct {
-		name        string
-		req         *pb.GetMetricRequest
-		hmacKey     *string
-		stgInitFunc func()
-		resp        *pb.GetMetricResponse
-		respCode    codes.Code
-		respErr     error
+		name          string
+		req           *pb.GetMetricRequest
+		hmacKey       *string
+		trustedSubnet *net.IPNet
+		stgInitFunc   func()
+		resp          *pb.GetMetricResponse
+		respCode      codes.Code
+		respErr       error
 	}{
 		{
 			name: "get unknown metric",
@@ -340,10 +395,28 @@ func (gs *GrpcServerSuite) TestGetMetric() {
 				gs.stg.SetGaugeMetric("gauge", metric.Gauge(123.123))
 			},
 		},
+		{
+			name: "get gauge ignore subnet check",
+			req: &pb.GetMetricRequest{
+				Type: pb.MetricType_GAUGE,
+				Id:   "gauge",
+			},
+			resp: &pb.GetMetricResponse{
+				Metric: &pb.Metric{
+					Type:  pb.MetricType_GAUGE,
+					Id:    "gauge",
+					Value: 123.123,
+				},
+			},
+			trustedSubnet: getSubnet("10.0.0.0/16"),
+			stgInitFunc: func() {
+				gs.stg.SetGaugeMetric("gauge", metric.Gauge(123.123))
+			},
+		},
 	} {
 		tt := tt
 		gs.Run(tt.name, func() {
-			gs.createTestServer(tt.hmacKey)
+			gs.createTestServer(tt.hmacKey, tt.trustedSubnet)
 
 			if tt.stgInitFunc != nil {
 				tt.stgInitFunc()
@@ -363,15 +436,15 @@ func (gs *GrpcServerSuite) TestGetMetric() {
 	}
 }
 
-func (gs *GrpcServerSuite) createTestServer(hmacKey *string) {
+func (gs *GrpcServerSuite) createTestServer(hmacKey *string, trustedSubnet *net.IPNet) {
 	buffer := 101024 * 1024
 	lis := bufconn.Listen(buffer)
 
-	gs.testSrv = &Server{storage: gs.stg, hmacKey: hmacKey, logger: gs.logger}
-	srv := grpc.NewServer()
-	pb.RegisterMetricServiceServer(srv, gs.testSrv)
+	var grpcSrv *grpc.Server
+	grpcSrv, gs.testSrv = NewServer(gs.stg, hmacKey, trustedSubnet, gs.logger)
+
 	go func() {
-		srv.Serve(lis)
+		grpcSrv.Serve(lis)
 	}()
 
 	conn, err := grpc.DialContext(context.Background(), "",
@@ -386,13 +459,18 @@ func (gs *GrpcServerSuite) createTestServer(hmacKey *string) {
 
 	gs.fTeardown = func() {
 		lis.Close()
-		srv.Stop()
+		grpcSrv.Stop()
 	}
 
 	gs.testClt = pb.NewMetricServiceClient(conn)
 }
 
 func strPointer(s string) *string { return &s }
+
+func getSubnet(s string) *net.IPNet {
+	_, subnet, _ := net.ParseCIDR(s)
+	return subnet
+}
 
 func TestGrpcServerSuite(t *testing.T) {
 	suite.Run(t, new(GrpcServerSuite))

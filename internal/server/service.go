@@ -125,15 +125,16 @@ func (service *Service) startGRPCServer(stg storage.Storage, grp *errgroup.Group
 		if err != nil {
 			return err
 		}
-		srv := srvgrpc.NewServer(
+		grpcSrv, _ := srvgrpc.NewServer(
 			stg,
 			service.settings.HmacKey,
+			service.settings.TrustedSubnet,
 			service.logger)
 
 		errChan := make(chan error)
 		go func(ch chan error) {
 			service.logger.Infof("GRPC service started on [%s]", service.settings.GrpcSettings.String())
-			ch <- srv.Serve(listen)
+			ch <- grpcSrv.Serve(listen)
 		}(errChan)
 
 		select {
@@ -142,7 +143,7 @@ func (service *Service) startGRPCServer(stg storage.Storage, grp *errgroup.Group
 		case <-grpCtx.Done():
 			service.logger.Infof("GRPC service context canceled")
 
-			srv.GracefulStop()
+			grpcSrv.GracefulStop()
 
 			service.logger.Info("GRPC service finished")
 			return nil
