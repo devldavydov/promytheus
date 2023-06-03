@@ -8,6 +8,7 @@ import (
 
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	pb "github.com/devldavydov/promytheus/internal/grpc"
+	"github.com/devldavydov/promytheus/internal/grpc/interceptor"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -377,7 +378,10 @@ func (gs *GrpcServerSuite) createTestServer(hmacKey *string) {
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 			return lis.Dial()
 		}),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(
+			interceptor.NewGzipClientInterceptor().Handle,
+		))
 	require.NoError(gs.T(), err)
 
 	gs.fTeardown = func() {
