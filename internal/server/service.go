@@ -10,8 +10,8 @@ import (
 
 	"github.com/devldavydov/promytheus/internal/common/cipher"
 	srvgrpc "github.com/devldavydov/promytheus/internal/server/grpc"
-	"github.com/devldavydov/promytheus/internal/server/handler/metric"
-	_middleware "github.com/devldavydov/promytheus/internal/server/middleware"
+	"github.com/devldavydov/promytheus/internal/server/http/handler/metric"
+	_middleware "github.com/devldavydov/promytheus/internal/server/http/middleware"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"

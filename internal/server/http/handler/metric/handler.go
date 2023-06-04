@@ -8,7 +8,7 @@ import (
 
 	_http "github.com/devldavydov/promytheus/internal/common/http"
 	"github.com/devldavydov/promytheus/internal/common/metric"
-	_middleware "github.com/devldavydov/promytheus/internal/server/middleware"
+	_middleware "github.com/devldavydov/promytheus/internal/server/http/middleware"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
