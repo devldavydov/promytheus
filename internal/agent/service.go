@@ -156,5 +156,5 @@ func (service *Service) loadGRPCTLS() (credentials.TransportCredentials, error) 
 	if service.settings.GRPCCACertPath == nil {
 		return nil, nil
 	}
-	return gtls.LoadCACert(*service.settings.GRPCCACertPath)
+	return gtls.LoadCACert(*service.settings.GRPCCACertPath, "")
 }

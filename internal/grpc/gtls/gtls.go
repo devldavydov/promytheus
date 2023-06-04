@@ -43,7 +43,7 @@ func (t *TLSServerSettings) Load() (credentials.TransportCredentials, error) {
 	return credentials.NewTLS(config), nil
 }
 
-func LoadCACert(caCertPath string) (credentials.TransportCredentials, error) {
+func LoadCACert(caCertPath string, customServerName string) (credentials.TransportCredentials, error) {
 	if caCertPath == "" {
 		// No TLS
 		return nil, nil
@@ -61,6 +61,9 @@ func LoadCACert(caCertPath string) (credentials.TransportCredentials, error) {
 
 	config := &tls.Config{
 		RootCAs: certPool,
+	}
+	if customServerName != "" {
+		config.ServerName = customServerName
 	}
 
 	return credentials.NewTLS(config), nil

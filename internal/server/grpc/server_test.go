@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"net"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/devldavydov/promytheus/internal/common/nettools"
 	pb "github.com/devldavydov/promytheus/internal/grpc"
+	"github.com/devldavydov/promytheus/internal/grpc/gtls"
 	"github.com/devldavydov/promytheus/internal/grpc/interceptor"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 	"github.com/sirupsen/logrus"
@@ -16,6 +19,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -58,7 +62,7 @@ func (gs *GrpcServerSuite) TestPing() {
 	} {
 		tt := tt
 		gs.Run(tt.name, func() {
-			gs.createTestServer(nil, tt.trustedSubnet)
+			gs.createTestServer(nil, tt.trustedSubnet, false)
 			_, err := gs.testClt.Ping(ctx, &pb.EmptyRequest{})
 
 			gs.NoError(err)
@@ -76,6 +80,7 @@ func (gs *GrpcServerSuite) TestUpdateMetrics() {
 		hmacKey       *string
 		trustedSubnet *net.IPNet
 		cltIP         *string
+		tls           bool
 		stgInitFunc   func()
 		stgCheckFunc  func()
 		respCode      codes.Code
@@ -210,10 +215,30 @@ func (gs *GrpcServerSuite) TestUpdateMetrics() {
 			respCode:      codes.PermissionDenied,
 			respErr:       errors.New("forbidden"),
 		},
+		{
+			name:     "correct update with hash check and TLS",
+			respCode: codes.OK,
+			req: &pb.UpdateMetricsRequest{
+				Metrics: []*pb.Metric{
+					{Type: pb.MetricType_GAUGE, Id: "Sys", Value: 13220880, Hash: "48a93e5dde0297029bf66cc10a1cdda9be6f858667ea885dc1b0d810032aa292"},
+					{Type: pb.MetricType_COUNTER, Id: "PollCount", Delta: 5, Hash: "b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"},
+					{Type: pb.MetricType_COUNTER, Id: "PollCount", Delta: 5, Hash: "b9203cac5904e73da2504aabfb77a419d3d3f9a0baee3707c55070432c6ff5a8"},
+				},
+			},
+			tls:     true,
+			hmacKey: strPointer("foobar"),
+			stgCheckFunc: func() {
+				vC, _ := gs.stg.GetCounterMetric("PollCount")
+				gs.Equal(metric.Counter(10), vC)
+
+				vG, _ := gs.stg.GetGaugeMetric("Sys")
+				gs.Equal(metric.Gauge(13220880), vG)
+			},
+		},
 	} {
 		tt := tt
 		gs.Run(tt.name, func() {
-			gs.createTestServer(tt.hmacKey, tt.trustedSubnet)
+			gs.createTestServer(tt.hmacKey, tt.trustedSubnet, tt.tls)
 
 			if tt.stgInitFunc != nil {
 				tt.stgInitFunc()
@@ -247,14 +272,14 @@ func (gs *GrpcServerSuite) TestGetAllMetrics() {
 	defer cancel()
 
 	gs.Run("empty storage", func() {
-		gs.createTestServer(nil, nil)
+		gs.createTestServer(nil, nil, false)
 		resp, err := gs.testClt.GetAllMetrics(ctx, &pb.EmptyRequest{})
 		gs.NoError(err)
 		gs.Equal(0, len(resp.Metrics))
 	})
 
 	gs.Run("get from storage with hash and ignore subnet check", func() {
-		gs.createTestServer(strPointer("foobar"), getSubnet("10.0.0.0/16"))
+		gs.createTestServer(strPointer("foobar"), getSubnet("10.0.0.0/16"), false)
 
 		gs.stg.SetCounterMetric("counter", metric.Counter(123))
 		gs.stg.SetGaugeMetric("gauge", metric.Gauge(123.123))
@@ -416,7 +441,7 @@ func (gs *GrpcServerSuite) TestGetMetric() {
 	} {
 		tt := tt
 		gs.Run(tt.name, func() {
-			gs.createTestServer(tt.hmacKey, tt.trustedSubnet)
+			gs.createTestServer(tt.hmacKey, tt.trustedSubnet, false)
 
 			if tt.stgInitFunc != nil {
 				tt.stgInitFunc()
@@ -436,12 +461,15 @@ func (gs *GrpcServerSuite) TestGetMetric() {
 	}
 }
 
-func (gs *GrpcServerSuite) createTestServer(hmacKey *string, trustedSubnet *net.IPNet) {
+func (gs *GrpcServerSuite) createTestServer(hmacKey *string, trustedSubnet *net.IPNet, tls bool) {
 	buffer := 101024 * 1024
 	lis := bufconn.Listen(buffer)
 
+	srvCredentials := getServerCredentials(tls)
+	cltCredentials := getClientCredentials(tls)
+
 	var grpcSrv *grpc.Server
-	grpcSrv, gs.testSrv = NewServer(gs.stg, hmacKey, trustedSubnet, nil, gs.logger)
+	grpcSrv, gs.testSrv = NewServer(gs.stg, hmacKey, trustedSubnet, srvCredentials, gs.logger)
 
 	go func() {
 		grpcSrv.Serve(lis)
@@ -451,7 +479,7 @@ func (gs *GrpcServerSuite) createTestServer(hmacKey *string, trustedSubnet *net.
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 			return lis.Dial()
 		}),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(cltCredentials),
 		grpc.WithChainUnaryInterceptor(
 			interceptor.NewGzipClientInterceptor().Handle,
 		))
@@ -470,6 +498,30 @@ func strPointer(s string) *string { return &s }
 func getSubnet(s string) *net.IPNet {
 	_, subnet, _ := net.ParseCIDR(s)
 	return subnet
+}
+
+func getServerCredentials(tls bool) credentials.TransportCredentials {
+	if !tls {
+		return nil
+	}
+
+	tlsServerSettings, _ := gtls.NewOptionalTLSServerSettings(getTLSFile("server-cert.pem"), getTLSFile("server-key.pem"))
+	tlsCredentials, _ := tlsServerSettings.Load()
+	return tlsCredentials
+}
+
+func getClientCredentials(tls bool) credentials.TransportCredentials {
+	if !tls {
+		return insecure.NewCredentials()
+	}
+	tlsCredentials, _ := gtls.LoadCACert(getTLSFile("ca-cert.pem"), "127.0.0.1")
+	return tlsCredentials
+}
+
+func getTLSFile(fileName string) string {
+	_, this, _, _ := runtime.Caller(0)
+	tlsRoot := filepath.Join(this, "../../../../tls")
+	return filepath.Join(tlsRoot, fileName)
 }
 
 func TestGrpcServerSuite(t *testing.T) {
