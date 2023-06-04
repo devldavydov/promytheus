@@ -15,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 
 	_ "google.golang.org/grpc/encoding/gzip"
 
@@ -29,10 +30,16 @@ type Server struct {
 }
 
 // NewServer - constructor for gRPC server.
-func NewServer(stg storage.Storage, hmacKey *string, trustedSubnet *net.IPNet, logger *logrus.Logger) (*grpc.Server, *Server) {
-	grpcSrv := grpc.NewServer(
+func NewServer(stg storage.Storage, hmacKey *string, trustedSubnet *net.IPNet, tlsCredentials credentials.TransportCredentials, logger *logrus.Logger) (*grpc.Server, *Server) {
+	opts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(interceptor.NewTrustedSubnetInterceptor(trustedSubnet, []string{"/grpc.MetricService/UpdateMetrics"}).Handle),
-	)
+	}
+
+	if tlsCredentials != nil {
+		opts = append([]grpc.ServerOption{grpc.Creds(tlsCredentials)}, opts...)
+	}
+
+	grpcSrv := grpc.NewServer(opts...)
 	srv := &Server{storage: stg, hmacKey: hmacKey, logger: logger}
 	pb.RegisterMetricServiceServer(grpcSrv, srv)
 	return grpcSrv, srv

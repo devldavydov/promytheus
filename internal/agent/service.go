@@ -12,7 +12,9 @@ import (
 	"github.com/devldavydov/promytheus/internal/common/cipher"
 	"github.com/devldavydov/promytheus/internal/common/metric"
 	"github.com/devldavydov/promytheus/internal/common/nettools"
+	"github.com/devldavydov/promytheus/internal/grpc/gtls"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/credentials"
 )
 
 // Collector is an interface for collector functionality.
@@ -65,12 +67,11 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 func (service *Service) Start(ctx context.Context) error {
 	service.logger.Info("Agent service started")
 
-	// TODO check HTTP/GRPC - key or TLS
-	cryptoPubKey, err := service.loadHTTPCryptoPubKey()
+	// Load encryption settings
+	encrSettings, err := service.loadEncryptionSettings()
 	if err != nil {
 		return err
 	}
-	encrSettings := publisher.EncryptionSettings{CryptoPubKey: cryptoPubKey}
 
 	var wg sync.WaitGroup
 
@@ -123,9 +124,37 @@ func (service *Service) startMainLoop(ctx context.Context) {
 	}
 }
 
+func (service *Service) loadEncryptionSettings() (publisher.EncryptionSettings, error) {
+	var err error
+	encrSettings := publisher.EncryptionSettings{}
+
+	if !service.settings.UseGRPC {
+		var cryptoPubKey *rsa.PublicKey
+		cryptoPubKey, err = service.loadHTTPCryptoPubKey()
+		if err == nil {
+			encrSettings.CryptoPubKey = cryptoPubKey
+		}
+	} else {
+		var tlsCredentials credentials.TransportCredentials
+		tlsCredentials, err = service.loadGRPCTLS()
+		if err == nil {
+			encrSettings.TLSCredentials = tlsCredentials
+		}
+	}
+
+	return encrSettings, err
+}
+
 func (service *Service) loadHTTPCryptoPubKey() (*rsa.PublicKey, error) {
 	if service.settings.CryptoPubKeyPath == nil {
 		return nil, nil
 	}
 	return cipher.PublicKeyFromFile(*service.settings.CryptoPubKeyPath)
+}
+
+func (service *Service) loadGRPCTLS() (credentials.TransportCredentials, error) {
+	if service.settings.GRPCCACertPath == nil {
+		return nil, nil
+	}
+	return gtls.LoadCACert(*service.settings.GRPCCACertPath)
 }

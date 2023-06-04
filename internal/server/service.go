@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/credentials"
 
 	_ "github.com/lib/pq"
 )
@@ -46,7 +47,7 @@ func (service *Service) Start(ctx context.Context) error {
 	service.startHTTPServer(stg, grp, grpCtx)
 
 	// Start GRPC server
-	if service.settings.GrpcSettings != nil {
+	if service.settings.GRPCAddress != nil {
 		service.startGRPCServer(stg, grp, grpCtx)
 	}
 
@@ -81,7 +82,7 @@ func (service *Service) createHTTPServer(stg storage.Storage) (*http.Server, err
 	)
 
 	return &http.Server{
-			Addr:    service.settings.HTTPSettings.String(),
+			Addr:    service.settings.HTTPAddress.String(),
 			Handler: router},
 		nil
 }
@@ -95,7 +96,7 @@ func (service *Service) startHTTPServer(stg storage.Storage, grp *errgroup.Group
 
 		errChan := make(chan error)
 		go func(ch chan error) {
-			service.logger.Infof("HTTP service started on [%s]", service.settings.HTTPSettings.String())
+			service.logger.Infof("HTTP service started on [%s]", service.settings.HTTPAddress.String())
 			ch <- httpServer.ListenAndServe()
 		}(errChan)
 
@@ -121,7 +122,17 @@ func (service *Service) startHTTPServer(stg storage.Storage, grp *errgroup.Group
 
 func (service *Service) startGRPCServer(stg storage.Storage, grp *errgroup.Group, grpCtx context.Context) {
 	grp.Go(func() error {
-		listen, err := net.Listen("tcp", service.settings.GrpcSettings.String())
+		var err error
+
+		var tlsCredentials credentials.TransportCredentials
+		if service.settings.GRPCServerTLS != nil {
+			tlsCredentials, err = service.settings.GRPCServerTLS.Load()
+			if err != nil {
+				return err
+			}
+		}
+
+		listen, err := net.Listen("tcp", service.settings.GRPCAddress.String())
 		if err != nil {
 			return err
 		}
@@ -129,11 +140,12 @@ func (service *Service) startGRPCServer(stg storage.Storage, grp *errgroup.Group
 			stg,
 			service.settings.HmacKey,
 			service.settings.TrustedSubnet,
+			tlsCredentials,
 			service.logger)
 
 		errChan := make(chan error)
 		go func(ch chan error) {
-			service.logger.Infof("GRPC service started on [%s]", service.settings.GrpcSettings.String())
+			service.logger.Infof("GRPC service started on [%s]", service.settings.GRPCAddress.String())
 			ch <- grpcSrv.Serve(listen)
 		}(errChan)
 

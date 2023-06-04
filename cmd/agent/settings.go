@@ -12,16 +12,17 @@ import (
 )
 
 const (
-	_defaultConfigAddress        = "127.0.0.1:8080"
-	_defaultConfigReportInterval = 10 * time.Second
-	_defaultConfigPollInterval   = 2 * time.Second
-	_defaultConfigLogLevel       = "DEBUG"
-	_defaultConfigLogFile        = "agent.log"
-	_defaultHmacKey              = ""
-	_defaultRateLimit            = 2
-	_defaultCryptoPubKeyPath     = ""
-	_defaultConfigFilePath       = ""
-	_defaultUseGRPC              = false
+	_defaultConfigAddress          = "127.0.0.1:8080"
+	_defaultConfigReportInterval   = 10 * time.Second
+	_defaultConfigPollInterval     = 2 * time.Second
+	_defaultConfigLogLevel         = "DEBUG"
+	_defaultConfigLogFile          = "agent.log"
+	_defaultConfigHmacKey          = ""
+	_defaultConfigRateLimit        = 2
+	_defaultConfigCryptoPubKeyPath = ""
+	_defaultConfigFilePath         = ""
+	_defaultConfigUseGRPC          = false
+	_defaultConfigGRPCCACertPath   = ""
 )
 
 type Config struct {
@@ -34,6 +35,7 @@ type Config struct {
 	PollInterval     time.Duration
 	RateLimit        int
 	UseGRPC          bool
+	GRPCCACertPath   string
 }
 
 func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
@@ -44,10 +46,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	flagSet.StringVar(&config.Address, "a", _defaultConfigAddress, "server address")
 	flagSet.DurationVar(&config.ReportInterval, "r", _defaultConfigReportInterval, "report interval")
 	flagSet.DurationVar(&config.PollInterval, "p", _defaultConfigPollInterval, "poll interval")
-	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
-	flagSet.IntVar(&config.RateLimit, "l", _defaultRateLimit, "rate limit")
-	flagSet.StringVar(&config.CryptoPubKeyPath, "crypto-key", _defaultCryptoPubKeyPath, "crypto public key path")
-	flagSet.BoolVar(&config.UseGRPC, "g", _defaultUseGRPC, "use GRPC insted of HTTP")
+	flagSet.StringVar(&config.HmacKey, "k", _defaultConfigHmacKey, "sign key")
+	flagSet.IntVar(&config.RateLimit, "l", _defaultConfigRateLimit, "rate limit")
+	flagSet.StringVar(&config.CryptoPubKeyPath, "crypto-key", _defaultConfigCryptoPubKeyPath, "crypto public key path")
+	flagSet.BoolVar(&config.UseGRPC, "g", _defaultConfigUseGRPC, "use gRPC insted of HTTP")
+	flagSet.StringVar(&config.GRPCCACertPath, "gca", _defaultConfigGRPCCACertPath, "gRPC TLS CA certificate path")
 	//
 	flagSet.StringVar(&configFilePath, "c", _defaultConfigFilePath, "config file path")
 	flagSet.StringVar(&configFilePath, "config", _defaultConfigFilePath, "config file path")
@@ -96,6 +99,11 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.GRPCCACertPath, err = env.GetVariable("GRPC_CA_CERT", env.CastString, config.GRPCCACertPath)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -127,7 +135,8 @@ func AgentSettingsAdapt(config *Config) (agent.ServiceSettings, error) {
 		config.HmacKey,
 		config.RateLimit,
 		config.CryptoPubKeyPath,
-		config.UseGRPC)
+		config.UseGRPC,
+		config.GRPCCACertPath)
 	if err != nil {
 		return agent.ServiceSettings{}, err
 	}
@@ -142,6 +151,7 @@ type configFile struct {
 	RateLimit        *int           `json:"rate_limit"`
 	CryptoPubKeyPath *string        `json:"crypto_key"`
 	UseGRPC          *bool          `json:"use_grpc"`
+	GRPCCACertPath   *string        `json:"grpc_ca_cert"`
 }
 
 func applyConfigFile(config *Config, configFilePath string) error {
@@ -169,17 +179,20 @@ func applyConfigFile(config *Config, configFilePath string) error {
 	if configFromFile.PollInterval != nil && config.PollInterval == _defaultConfigPollInterval {
 		config.PollInterval = *configFromFile.PollInterval
 	}
-	if configFromFile.HmacKey != nil && config.HmacKey == _defaultHmacKey {
+	if configFromFile.HmacKey != nil && config.HmacKey == _defaultConfigHmacKey {
 		config.HmacKey = *configFromFile.HmacKey
 	}
-	if configFromFile.RateLimit != nil && config.RateLimit == _defaultRateLimit {
+	if configFromFile.RateLimit != nil && config.RateLimit == _defaultConfigRateLimit {
 		config.RateLimit = *configFromFile.RateLimit
 	}
-	if configFromFile.CryptoPubKeyPath != nil && config.CryptoPubKeyPath == _defaultCryptoPubKeyPath {
+	if configFromFile.CryptoPubKeyPath != nil && config.CryptoPubKeyPath == _defaultConfigCryptoPubKeyPath {
 		config.CryptoPubKeyPath = *configFromFile.CryptoPubKeyPath
 	}
 	if configFromFile.UseGRPC != nil && !config.UseGRPC {
 		config.UseGRPC = *configFromFile.UseGRPC
+	}
+	if configFromFile.GRPCCACertPath != nil && config.GRPCCACertPath == _defaultConfigGRPCCACertPath {
+		config.GRPCCACertPath = *configFromFile.GRPCCACertPath
 	}
 
 	return nil

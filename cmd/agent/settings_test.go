@@ -29,6 +29,7 @@ func TestAgentSettingsAdaptDefault(t *testing.T) {
 	assert.Nil(t, agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 2, agentSettings.RateLimit)
 	assert.False(t, agentSettings.UseGRPC)
+	assert.Nil(t, agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomEnv(t *testing.T) {
@@ -39,6 +40,7 @@ func TestAgentSettingsAdaptCustomEnv(t *testing.T) {
 	t.Setenv("RATE_LIMIT", "10")
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa.pub")
 	t.Setenv("USE_GRPC", "true")
+	t.Setenv("GRPC_CA_CERT", "/home/ca.pem")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 	config, err := LoadConfig(*testFlagSet, []string{})
@@ -55,6 +57,7 @@ func TestAgentSettingsAdaptCustomEnv(t *testing.T) {
 	assert.Equal(t, "/home/.ssh/id_rsa.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 10, agentSettings.RateLimit)
 	assert.True(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomFlag(t *testing.T) {
@@ -63,6 +66,7 @@ func TestAgentSettingsAdaptCustomFlag(t *testing.T) {
 		*testFlagSet,
 		[]string{
 			"-a", "8.8.8.8:8888", "-r", "11s", "-p", "3s", "-k", "123", "-l", "5", "-crypto-key", "./key.pub", "-g",
+			"-gca", "/home/ca.pem",
 		},
 	)
 	assert.NoError(t, err)
@@ -78,6 +82,7 @@ func TestAgentSettingsAdaptCustomFlag(t *testing.T) {
 	assert.Equal(t, "./key.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 5, agentSettings.RateLimit)
 	assert.True(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomEnvAndFlag(t *testing.T) {
@@ -88,11 +93,15 @@ func TestAgentSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	t.Setenv("RATE_LIMIT", "15")
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa.pub")
 	t.Setenv("USE_GRPC", "false")
+	t.Setenv("GRPC_CA_CERT", "/home/ca.pem")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 	config, err := LoadConfig(
 		*testFlagSet,
-		[]string{"-a", "8.8.8.8:8888", "-r", "11s", "-p", "3s", "-k", "456", "-l", "1", "-crypto-key", "./key.pub", "-g"},
+		[]string{
+			"-a", "8.8.8.8:8888", "-r", "11s", "-p", "3s", "-k", "456", "-l", "1", "-crypto-key", "./key.pub", "-g",
+			"-gca", "/home/ca2.pem",
+		},
 	)
 	assert.NoError(t, err)
 
@@ -107,11 +116,13 @@ func TestAgentSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	assert.Equal(t, "/home/.ssh/id_rsa.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 15, agentSettings.RateLimit)
 	assert.False(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	t.Setenv("ADDRESS", "1.1.1.1:9999")
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa.pub")
+	t.Setenv("GRPC_CA_CERT", "/home/ca.pem")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 	config, err := LoadConfig(*testFlagSet, []string{"-a", "8.8.8.8:8888", "-p", "3s", "-l", "11", "-g"})
@@ -128,6 +139,7 @@ func TestAgentSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	assert.Equal(t, "/home/.ssh/id_rsa.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 11, agentSettings.RateLimit)
 	assert.True(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomError(t *testing.T) {
@@ -198,6 +210,7 @@ func TestAgentSettingsWithConfigFile(t *testing.T) {
 	assert.Nil(t, agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 2, agentSettings.RateLimit)
 	assert.False(t, agentSettings.UseGRPC)
+	assert.Nil(t, agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAllFromConfigFile(t *testing.T) {
@@ -217,6 +230,7 @@ func TestAgentSettingsAllFromConfigFile(t *testing.T) {
 	cfgRateLimit := 1
 	cfgPubKey := "/tmp/id_rsa.pub"
 	cfgUseGRPC := true
+	cfgGRPCCACertPath := "/home/ca.pem"
 
 	tempCfg := configFile{
 		Address:          &cfgAddr,
@@ -226,6 +240,7 @@ func TestAgentSettingsAllFromConfigFile(t *testing.T) {
 		RateLimit:        &cfgRateLimit,
 		CryptoPubKeyPath: &cfgPubKey,
 		UseGRPC:          &cfgUseGRPC,
+		GRPCCACertPath:   &cfgGRPCCACertPath,
 	}
 	assert.NoError(t, json.NewEncoder(fCfg).Encode(&tempCfg))
 
@@ -245,4 +260,5 @@ func TestAgentSettingsAllFromConfigFile(t *testing.T) {
 	assert.Equal(t, "/tmp/id_rsa.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 1, agentSettings.RateLimit)
 	assert.True(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }

@@ -4,27 +4,30 @@ import (
 	"net"
 
 	"github.com/devldavydov/promytheus/internal/common/nettools"
+	"github.com/devldavydov/promytheus/internal/grpc/gtls"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 )
 
 type ServiceSettings struct {
-	HTTPSettings      nettools.Address
+	HTTPAddress       nettools.Address
 	DatabaseDsn       string
 	PersistSettings   storage.PersistSettings
 	HmacKey           *string
 	CryptoPrivKeyPath *string
 	TrustedSubnet     *net.IPNet
-	GrpcSettings      *nettools.Address
+	GRPCAddress       *nettools.Address
+	GRPCServerTLS     *gtls.TLSServerSettings
 }
 
 func NewServiceSettings(
-	httpSettings nettools.Address,
+	httpAddress nettools.Address,
 	hmacKey string,
 	databaseDsn string,
 	persistSettimgs storage.PersistSettings,
 	cryptoPrivKeyPath string,
 	trustedSubnet *net.IPNet,
-	grpcSettings *nettools.Address,
+	grpcAddress *nettools.Address,
+	grpcServerTLS *gtls.TLSServerSettings,
 ) ServiceSettings {
 	var hmac *string
 	if hmacKey != "" {
@@ -37,12 +40,13 @@ func NewServiceSettings(
 	}
 
 	return ServiceSettings{
-		HTTPSettings:      httpSettings,
+		HTTPAddress:       httpAddress,
 		PersistSettings:   persistSettimgs,
 		HmacKey:           hmac,
 		DatabaseDsn:       databaseDsn,
 		CryptoPrivKeyPath: privKeyPath,
 		TrustedSubnet:     trustedSubnet,
-		GrpcSettings:      grpcSettings,
+		GRPCAddress:       grpcAddress,
+		GRPCServerTLS:     grpcServerTLS,
 	}
 }

@@ -441,7 +441,7 @@ func (gs *GrpcServerSuite) createTestServer(hmacKey *string, trustedSubnet *net.
 	lis := bufconn.Listen(buffer)
 
 	var grpcSrv *grpc.Server
-	grpcSrv, gs.testSrv = NewServer(gs.stg, hmacKey, trustedSubnet, gs.logger)
+	grpcSrv, gs.testSrv = NewServer(gs.stg, hmacKey, trustedSubnet, nil, gs.logger)
 
 	go func() {
 		grpcSrv.Serve(lis)

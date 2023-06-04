@@ -197,11 +197,28 @@ run_docs:
 	@echo "See docs in http://localhost:8080/pkg/github.com/devldavydov/promytheus/?m=all"
 	@godoc -http=:8080
 
-.PHONY: gen_swagger
-gen_swagger:
+.PHONY: swagger_gen
+swagger_gen:
 	@echo "\n### $@"
 	@swag init -g handler.go -d internal/server/handler/metric --parseDependency --output ./swagger/
 	@swag fmt
+
+.PHONY: tls_gen
+tls_gen:
+	@echo "\n### $@"
+	@mkdir -p tls
+	@rm -rf tls/*
+	@echo "subjectAltName=IP:127.0.0.1" > tls/server-ext.cnf
+	@echo "> Generate CA's private key and self-signed certificate"
+	@openssl req -x509 -newkey rsa:4096 -days 365 -nodes -keyout tls/ca-key.pem -out tls/ca-cert.pem -subj "/C=RU/ST=Moscow/L=Moscow/O=Yandex/OU=Praktikum/CN=promytheus"
+	@echo "> CA's self-signed certificate"
+	@openssl x509 -in tls/ca-cert.pem -noout -text
+	@echo "> Generate web server's private key and certificate signing request (CSR)"
+	@openssl req -newkey rsa:4096 -nodes -keyout tls/server-key.pem -out tls/server-req.pem -subj "/C=RU/ST=Moscow/L=Moscow/O=Yandex/OU=Praktikum/CN=promytheus"
+	@echo "> Use CA's private key to sign web server's CSR and get back the signed certificate"
+	@openssl x509 -req -in tls/server-req.pem -days 365 -CA tls/ca-cert.pem -CAkey tls/ca-key.pem -CAcreateserial -out tls/server-cert.pem -extfile tls/server-ext.cnf
+	@echo "> Server's signed certificate"
+	@openssl x509 -in tls/server-cert.pem -noout -text
 
 .PHONY: clean
 clean:

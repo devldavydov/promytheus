@@ -4,6 +4,8 @@ import (
 	"crypto/rsa"
 	"net"
 	"time"
+
+	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -13,7 +15,8 @@ const (
 
 // EncryptionSettings - settings for publishers encryption
 type EncryptionSettings struct {
-	CryptoPubKey *rsa.PublicKey
+	CryptoPubKey   *rsa.PublicKey
+	TLSCredentials credentials.TransportCredentials
 }
 
 type PublisherExtraSettings struct {

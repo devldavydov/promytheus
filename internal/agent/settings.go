@@ -15,6 +15,7 @@ type ServiceSettings struct {
 	ReportInterval   time.Duration
 	RateLimit        int
 	UseGRPC          bool
+	GRPCCACertPath   *string
 }
 
 // NewServiceSettings creates new agent service settings.
@@ -26,6 +27,7 @@ func NewServiceSettings(
 	rateLimit int,
 	cryptoPubKeyPath string,
 	useGRPC bool,
+	grpcCACertPath string,
 ) (ServiceSettings, error) {
 	srvAddr, err := nettools.NewAddress(serverAddress)
 	if err != nil {
@@ -42,6 +44,11 @@ func NewServiceSettings(
 		pubKeyPath = &cryptoPubKeyPath
 	}
 
+	var grpcCACert *string
+	if grpcCACertPath != "" {
+		grpcCACert = &grpcCACertPath
+	}
+
 	return ServiceSettings{
 		ServerAddress:    srvAddr,
 		PollInterval:     pollInterval,
@@ -50,5 +57,6 @@ func NewServiceSettings(
 		RateLimit:        rateLimit,
 		CryptoPubKeyPath: pubKeyPath,
 		UseGRPC:          useGRPC,
+		GRPCCACertPath:   grpcCACert,
 	}, nil
 }

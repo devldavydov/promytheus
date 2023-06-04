@@ -11,7 +11,7 @@ import (
 	"github.com/devldavydov/promytheus/internal/grpc/interceptor"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
 // GRPCPublisher is a gRPC metric publisher.
@@ -24,6 +24,7 @@ type GRPCPublisher struct {
 	hostIP               string
 	threadID             int
 	shutdownTimeout      time.Duration
+	tlsCredentials       credentials.TransportCredentials
 }
 
 // GRPCPublisher constructor.
@@ -46,6 +47,7 @@ func NewGRPCPublisher(
 		threadID:        threadID,
 		shutdownTimeout: shutdownTimeout,
 		hostIP:          extra.HostIP.String(),
+		tlsCredentials:  extra.EncrSettings.TLSCredentials,
 		logger:          logger,
 	}
 }
@@ -89,11 +91,12 @@ func (g *GRPCPublisher) processMetrics(metricsList []metric.Metrics) {
 }
 
 func (g *GRPCPublisher) publishMetrics(metricReq []metric.MetricsDTO) error {
-	conn, err := grpc.Dial(
-		g.serverAddress.String(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(interceptor.NewGzipClientInterceptor().Handle),
-	)
+	opts := []grpc.DialOption{grpc.WithUnaryInterceptor(interceptor.NewGzipClientInterceptor().Handle)}
+	if g.tlsCredentials != nil {
+		opts = append([]grpc.DialOption{grpc.WithTransportCredentials(g.tlsCredentials)}, opts...)
+	}
+
+	conn, err := grpc.Dial(g.serverAddress.String(), opts...)
 	if err != nil {
 		return fmt.Errorf("gRPC publisher[%d] failed to create connection: %w", g.threadID, err)
 	}

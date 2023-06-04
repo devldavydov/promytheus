@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/devldavydov/promytheus/internal/grpc/gtls"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,8 +22,8 @@ func TestServerSettingsAdaptDefault(t *testing.T) {
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "127.0.0.1", serverSettings.HTTPSettings.Host)
-	assert.Equal(t, 8080, serverSettings.HTTPSettings.Port)
+	assert.Equal(t, "127.0.0.1", serverSettings.HTTPAddress.Host)
+	assert.Equal(t, 8080, serverSettings.HTTPAddress.Port)
 	assert.Nil(t, serverSettings.HmacKey)
 	assert.Equal(t, 300*time.Second, serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
@@ -30,7 +31,8 @@ func TestServerSettingsAdaptDefault(t *testing.T) {
 	assert.True(t, serverSettings.PersistSettings.Restore)
 	assert.Nil(t, serverSettings.CryptoPrivKeyPath)
 	assert.Nil(t, serverSettings.TrustedSubnet)
-	assert.Nil(t, serverSettings.GrpcSettings)
+	assert.Nil(t, serverSettings.GRPCAddress)
+	assert.Nil(t, serverSettings.GRPCServerTLS)
 }
 
 func TestServerSettingsAdaptCustomEnv(t *testing.T) {
@@ -45,6 +47,8 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 		t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa")
 		t.Setenv("TRUSTED_SUBNET", "192.168.0.0/16")
 		t.Setenv("GRPC_ADDRESS", "10.0.0.0:5555")
+		t.Setenv("GRPC_SERVER_TLS_CERT", "/home/srv.pem")
+		t.Setenv("GRPC_SERVER_TLS_KEY", "/home/srv.key")
 
 		testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 		config, err := LoadConfig(*testFlagSet, []string{})
@@ -53,8 +57,8 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 		serverSettings, err := ServerSettingsAdapt(config)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "1.1.1.1", serverSettings.HTTPSettings.Host)
-		assert.Equal(t, 9999, serverSettings.HTTPSettings.Port)
+		assert.Equal(t, "1.1.1.1", serverSettings.HTTPAddress.Host)
+		assert.Equal(t, 9999, serverSettings.HTTPAddress.Port)
 		assert.Equal(t, "123", *serverSettings.HmacKey)
 		assert.Equal(t, time.Duration(0), serverSettings.PersistSettings.StoreInterval)
 		assert.Equal(t, storeFile, serverSettings.PersistSettings.StoreFile)
@@ -62,8 +66,11 @@ func TestServerSettingsAdaptCustomEnv(t *testing.T) {
 		assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 		assert.Equal(t, "/home/.ssh/id_rsa", *serverSettings.CryptoPrivKeyPath)
 		assert.Equal(t, getIPNet("192.168.0.0/16"), serverSettings.TrustedSubnet)
-		assert.Equal(t, "10.0.0.0", serverSettings.GrpcSettings.Host)
-		assert.Equal(t, 5555, serverSettings.GrpcSettings.Port)
+		assert.Equal(t, "10.0.0.0", serverSettings.GRPCAddress.Host)
+		assert.Equal(t, 5555, serverSettings.GRPCAddress.Port)
+		assert.Equal(t, gtls.TLSServerSettings{
+			ServerCertPath: "/home/srv.pem", ServerKeyPath: "/home/srv.key",
+		}, *serverSettings.GRPCServerTLS)
 	}
 }
 
@@ -80,14 +87,16 @@ func TestServerSettingsAdaptCustomFlag(t *testing.T) {
 			"-d", "postgre:5444",
 			"-crypto-key", "/home/.ssh/id_rsa",
 			"-t", "192.168.0.0/16",
-			"-g", "10.0.0.0:5555"})
+			"-g", "10.0.0.0:5555",
+			"-gtlscert", "/home/srv.pem",
+			"-gtlskey", "/home/srv.key"})
 	assert.NoError(t, err)
 
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "1.1.1.1", serverSettings.HTTPSettings.Host)
-	assert.Equal(t, 9999, serverSettings.HTTPSettings.Port)
+	assert.Equal(t, "1.1.1.1", serverSettings.HTTPAddress.Host)
+	assert.Equal(t, 9999, serverSettings.HTTPAddress.Port)
 	assert.Equal(t, "123", *serverSettings.HmacKey)
 	assert.Equal(t, time.Duration(0), serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/ttt", serverSettings.PersistSettings.StoreFile)
@@ -95,8 +104,11 @@ func TestServerSettingsAdaptCustomFlag(t *testing.T) {
 	assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 	assert.Equal(t, "/home/.ssh/id_rsa", *serverSettings.CryptoPrivKeyPath)
 	assert.Equal(t, getIPNet("192.168.0.0/16"), serverSettings.TrustedSubnet)
-	assert.Equal(t, "10.0.0.0", serverSettings.GrpcSettings.Host)
-	assert.Equal(t, 5555, serverSettings.GrpcSettings.Port)
+	assert.Equal(t, "10.0.0.0", serverSettings.GRPCAddress.Host)
+	assert.Equal(t, 5555, serverSettings.GRPCAddress.Port)
+	assert.Equal(t, gtls.TLSServerSettings{
+		ServerCertPath: "/home/srv.pem", ServerKeyPath: "/home/srv.key",
+	}, *serverSettings.GRPCServerTLS)
 }
 
 func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
@@ -109,6 +121,9 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa")
 	t.Setenv("TRUSTED_SUBNET", "10.0.0.0/16")
 	t.Setenv("GRPC_ADDRESS", "10.0.0.0:5555")
+	t.Setenv("GRPC_SERVER_CERT", "/home/srv.pem")
+	t.Setenv("GRPC_SERVER_TLS_CERT", "/home/srv.pem")
+	t.Setenv("GRPC_SERVER_TLS_KEY", "/home/srv.key")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 	config, err := LoadConfig(
@@ -122,14 +137,15 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 			"-d", "postgre:5444",
 			"-crypto-key", "./id_rsa",
 			"-t", "192.168.0.0/16",
-			"-g", "10.10.10.10:5555"})
+			"-gtlscert", "/home/srv2.pem",
+			"-gtlskey", "/home/srv2.key"})
 	assert.NoError(t, err)
 
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "1.1.1.1", serverSettings.HTTPSettings.Host)
-	assert.Equal(t, 9999, serverSettings.HTTPSettings.Port)
+	assert.Equal(t, "1.1.1.1", serverSettings.HTTPAddress.Host)
+	assert.Equal(t, 9999, serverSettings.HTTPAddress.Port)
 	assert.Equal(t, "123", *serverSettings.HmacKey)
 	assert.Equal(t, time.Duration(0), serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/ttt", serverSettings.PersistSettings.StoreFile)
@@ -137,8 +153,11 @@ func TestServerSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	assert.Equal(t, "postgre:5444", serverSettings.DatabaseDsn)
 	assert.Equal(t, "/home/.ssh/id_rsa", *serverSettings.CryptoPrivKeyPath)
 	assert.Equal(t, getIPNet("10.0.0.0/16"), serverSettings.TrustedSubnet)
-	assert.Equal(t, "10.0.0.0", serverSettings.GrpcSettings.Host)
-	assert.Equal(t, 5555, serverSettings.GrpcSettings.Port)
+	assert.Equal(t, "10.0.0.0", serverSettings.GRPCAddress.Host)
+	assert.Equal(t, 5555, serverSettings.GRPCAddress.Port)
+	assert.Equal(t, gtls.TLSServerSettings{
+		ServerCertPath: "/home/srv.pem", ServerKeyPath: "/home/srv.key",
+	}, *serverSettings.GRPCServerTLS)
 }
 
 func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
@@ -147,16 +166,17 @@ func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa")
 	t.Setenv("TRUSTED_SUBNET", "10.0.0.0/16")
 	t.Setenv("GRPC_ADDRESS", "10.0.0.0:5555")
+	t.Setenv("GRPC_SERVER_TLS_KEY", "/home/srv.key")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	config, err := LoadConfig(*testFlagSet, []string{"-i", "5m", "-r=false", "-k", "123"})
+	config, err := LoadConfig(*testFlagSet, []string{"-i", "5m", "-r=false", "-k", "123", "-gtlscert", "/home/srv.pem"})
 	assert.NoError(t, err)
 
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "127.0.0.1", serverSettings.HTTPSettings.Host)
-	assert.Equal(t, 8080, serverSettings.HTTPSettings.Port)
+	assert.Equal(t, "127.0.0.1", serverSettings.HTTPAddress.Host)
+	assert.Equal(t, 8080, serverSettings.HTTPAddress.Port)
 	assert.Equal(t, "123", *serverSettings.HmacKey)
 	assert.Equal(t, 1*time.Second, serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
@@ -164,27 +184,39 @@ func TestServerSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	assert.Equal(t, "", serverSettings.DatabaseDsn)
 	assert.Equal(t, "/home/.ssh/id_rsa", *serverSettings.CryptoPrivKeyPath)
 	assert.Equal(t, getIPNet("10.0.0.0/16"), serverSettings.TrustedSubnet)
-	assert.Equal(t, "10.0.0.0", serverSettings.GrpcSettings.Host)
-	assert.Equal(t, 5555, serverSettings.GrpcSettings.Port)
+	assert.Equal(t, "10.0.0.0", serverSettings.GRPCAddress.Host)
+	assert.Equal(t, 5555, serverSettings.GRPCAddress.Port)
+	assert.Equal(t, gtls.TLSServerSettings{
+		ServerCertPath: "/home/srv.pem", ServerKeyPath: "/home/srv.key",
+	}, *serverSettings.GRPCServerTLS)
 }
 
 func TestServerSettingsAdaptCustomError(t *testing.T) {
 	for i, tt := range []struct {
-		varName string
-		varVal  string
+		vars map[string]string
 	}{
-		{varName: "ADDRESS", varVal: "1.1.1.1"},
-		{varName: "ADDRESS", varVal: "1.1.1.1:foobar"},
-		{varName: "GRPC_ADDRESS", varVal: "1.1.1.1"},
-		{varName: "GRPC_ADDRESS", varVal: "1.1.1.1:foobar"},
-		{varName: "TRUSTED_SUBNET", varVal: "abcdef"},
-		{varName: "TRUSTED_SUBNET", varVal: "10.0.0.0"},
-		{varName: "TRUSTED_SUBNET", varVal: "10.0.0.0/500"},
+		{vars: map[string]string{"ADDRESS": "1.1.1.1"}},
+		{vars: map[string]string{"ADDRESS": "1.1.1.1:foobar"}},
+		{vars: map[string]string{"GRPC_ADDRESS": "1.1.1.1"}},
+		{vars: map[string]string{"GRPC_ADDRESS": "1.1.1.1:foobar"}},
+		{vars: map[string]string{"TRUSTED_SUBNET": "abcdef"}},
+		{vars: map[string]string{"TRUSTED_SUBNET": "10.0.0.0"}},
+		{vars: map[string]string{"TRUSTED_SUBNET": "10.0.0.0/500"}},
+		{vars: map[string]string{
+			"GRPC_SERVER_TLS_CERT": "/home/f",
+			"GRPC_SERVER_TLS_KEY":  "",
+		}},
+		{vars: map[string]string{
+			"GRPC_SERVER_TLS_CERT": "",
+			"GRPC_SERVER_TLS_KEY":  "/home/f",
+		}},
 	} {
 		tt := tt
 		i := i
 		t.Run(fmt.Sprintf("Run %d", i), func(t *testing.T) {
-			t.Setenv(tt.varName, tt.varVal)
+			for k, v := range tt.vars {
+				t.Setenv(k, v)
+			}
 
 			testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 			config, err := LoadConfig(*testFlagSet, []string{})
@@ -247,8 +279,8 @@ func TestServerSettingsWithConfigFile(t *testing.T) {
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "172.100.1.1", serverSettings.HTTPSettings.Host)
-	assert.Equal(t, 9090, serverSettings.HTTPSettings.Port)
+	assert.Equal(t, "172.100.1.1", serverSettings.HTTPAddress.Host)
+	assert.Equal(t, 9090, serverSettings.HTTPAddress.Port)
 	assert.Nil(t, serverSettings.HmacKey)
 	assert.Equal(t, 10*time.Second, serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/devops-metrics-db.json", serverSettings.PersistSettings.StoreFile)
@@ -256,7 +288,8 @@ func TestServerSettingsWithConfigFile(t *testing.T) {
 	assert.True(t, serverSettings.PersistSettings.Restore)
 	assert.Nil(t, serverSettings.CryptoPrivKeyPath)
 	assert.Equal(t, getIPNet("10.0.0.0/16"), serverSettings.TrustedSubnet)
-	assert.Nil(t, serverSettings.GrpcSettings)
+	assert.Nil(t, serverSettings.GRPCAddress)
+	assert.Nil(t, serverSettings.GRPCServerTLS)
 }
 
 func TestServerSettingsAllFromConfigFile(t *testing.T) {
@@ -277,7 +310,9 @@ func TestServerSettingsAllFromConfigFile(t *testing.T) {
 	cfgHmacKey := "hmac_key"
 	cfgPrivKey := "/tmp/id_rsa"
 	cfgTrustedSubnet := "10.0.0.0/16"
-	cfgGrpcAddress := "10.0.0.0:5555"
+	cfgGRPCAddress := "10.0.0.0:5555"
+	cfgGRPCServerCert := "/home/srv.pem"
+	cfgGRPCServerKey := "/home/srv.key"
 
 	tempCfg := configFile{
 		Address:           &cfgAddr,
@@ -288,7 +323,9 @@ func TestServerSettingsAllFromConfigFile(t *testing.T) {
 		HmacKey:           &cfgHmacKey,
 		CryptoPrivKeyPath: &cfgPrivKey,
 		TrustedSubnet:     &cfgTrustedSubnet,
-		GrpcAddress:       &cfgGrpcAddress,
+		GRPCAddress:       &cfgGRPCAddress,
+		GRPCServerTLSCert: &cfgGRPCServerCert,
+		GRPCServerTLSKey:  &cfgGRPCServerKey,
 	}
 	assert.NoError(t, json.NewEncoder(fCfg).Encode(&tempCfg))
 
@@ -300,8 +337,8 @@ func TestServerSettingsAllFromConfigFile(t *testing.T) {
 	serverSettings, err := ServerSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "172.100.1.1", serverSettings.HTTPSettings.Host)
-	assert.Equal(t, 9090, serverSettings.HTTPSettings.Port)
+	assert.Equal(t, "172.100.1.1", serverSettings.HTTPAddress.Host)
+	assert.Equal(t, 9090, serverSettings.HTTPAddress.Port)
 	assert.Equal(t, "hmac_key", *serverSettings.HmacKey)
 	assert.Equal(t, 100*time.Minute, serverSettings.PersistSettings.StoreInterval)
 	assert.Equal(t, "/tmp/store", serverSettings.PersistSettings.StoreFile)
@@ -309,8 +346,11 @@ func TestServerSettingsAllFromConfigFile(t *testing.T) {
 	assert.True(t, serverSettings.PersistSettings.Restore)
 	assert.Equal(t, "/tmp/id_rsa", *serverSettings.CryptoPrivKeyPath)
 	assert.Equal(t, getIPNet("10.0.0.0/16"), serverSettings.TrustedSubnet)
-	assert.Equal(t, "10.0.0.0", serverSettings.GrpcSettings.Host)
-	assert.Equal(t, 5555, serverSettings.GrpcSettings.Port)
+	assert.Equal(t, "10.0.0.0", serverSettings.GRPCAddress.Host)
+	assert.Equal(t, 5555, serverSettings.GRPCAddress.Port)
+	assert.Equal(t, gtls.TLSServerSettings{
+		ServerCertPath: "/home/srv.pem", ServerKeyPath: "/home/srv.key",
+	}, *serverSettings.GRPCServerTLS)
 }
 
 func getIPNet(cidr string) *net.IPNet {
