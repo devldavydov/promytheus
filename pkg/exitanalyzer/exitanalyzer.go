@@ -49,7 +49,12 @@ func findInMainFunc(pass *analysis.Pass, mainFNode *ast.FuncDecl) {
 			return true
 		}
 
-		if fSelExpr.X.(*ast.Ident).Name == "os" && fSelExpr.Sel.Name == "Exit" {
+		ident, ok := fSelExpr.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+
+		if ident.Name == "os" && fSelExpr.Sel.Name == "Exit" {
 			pass.Reportf(fSelExpr.Pos(), `cannot use "os.Exit" in package main "main" function`)
 		}
 		return true

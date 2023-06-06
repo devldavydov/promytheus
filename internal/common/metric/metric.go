@@ -1,7 +1,18 @@
-// Package metrics - base package for metric values and their functions.
+// Package metric - base package for metric values and their functions.
 package metric
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+// Metric errors
+var (
+	ErrUnknownMetricType = errors.New("unknown metric type")
+	ErrEmptyMetricName   = errors.New("empty metric name")
+	ErrWrongMetricValue  = errors.New("wrong metric value")
+	ErrMetricHashCheck   = errors.New("metric hash check fail")
+)
 
 // AllTypes - valid metric types.
 var AllTypes = map[string]bool{

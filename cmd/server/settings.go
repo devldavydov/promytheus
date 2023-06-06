@@ -4,37 +4,46 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"net"
 	"os"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/devldavydov/promytheus/internal/common/env"
+	"github.com/devldavydov/promytheus/internal/common/nettools"
+	"github.com/devldavydov/promytheus/internal/grpc/gtls"
 	"github.com/devldavydov/promytheus/internal/server"
 	"github.com/devldavydov/promytheus/internal/server/storage"
 )
 
 const (
-	_defaultConfigAddress       = "127.0.0.1:8080"
-	_defaultConfigLogLevel      = "DEBUG"
-	_defaultConfigLogFile       = "server.log"
-	_defaultconfigStoreInterval = 300 * time.Second
-	_defaultConfigStoreFile     = "/tmp/devops-metrics-db.json"
-	_defaultConfigRestore       = true
-	_defaultHmacKey             = ""
-	_defaultDatabaseDsn         = ""
-	_defaultCryptoPrivKeyPath   = ""
-	_defaultConfigFilePath      = ""
+	_defaultConfigHTTPAddress       = "127.0.0.1:8080"
+	_defaultConfigLogLevel          = "DEBUG"
+	_defaultConfigLogFile           = "server.log"
+	_defaultconfigStoreInterval     = 300 * time.Second
+	_defaultConfigStoreFile         = "/tmp/devops-metrics-db.json"
+	_defaultConfigRestore           = true
+	_defaultConfigHmacKey           = ""
+	_defaultConfigDatabaseDsn       = ""
+	_defaultconfigCryptoPrivKeyPath = ""
+	_defaultConfigFilePath          = ""
+	_defaultConfigTrustedSubnet     = ""
+	_defaultConfigGrpcAddress       = ""
+	_defaultConfigGrpcServerTLSCert = ""
+	_defaultConfigGrpcServerTLSKey  = ""
 )
 
 type Config struct {
-	Address           string
+	HTTPAddress       string
 	StoreFile         string
 	HmacKey           string
 	DatabaseDsn       string
 	LogLevel          string
 	LogFile           string
 	CryptoPrivKeyPath string
+	TrustedSubnet     string
+	GRPCAddress       string
+	GRPCServerTLSCert string
+	GRPCServerTLSKey  string
 	StoreInterval     time.Duration
 	Restore           bool
 }
@@ -45,13 +54,17 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	config := &Config{}
 
 	// Check flags
-	flagSet.StringVar(&config.Address, "a", _defaultConfigAddress, "server address")
+	flagSet.StringVar(&config.HTTPAddress, "a", _defaultConfigHTTPAddress, "server HTTP address")
 	flagSet.DurationVar(&config.StoreInterval, "i", _defaultconfigStoreInterval, "store interval")
 	flagSet.StringVar(&config.StoreFile, "f", _defaultConfigStoreFile, "store file")
 	flagSet.BoolVar(&config.Restore, "r", _defaultConfigRestore, "restore")
-	flagSet.StringVar(&config.HmacKey, "k", _defaultHmacKey, "sign key")
-	flagSet.StringVar(&config.DatabaseDsn, "d", _defaultDatabaseDsn, "database dsn")
-	flagSet.StringVar(&config.CryptoPrivKeyPath, "crypto-key", _defaultCryptoPrivKeyPath, "crypto private key path")
+	flagSet.StringVar(&config.HmacKey, "k", _defaultConfigHmacKey, "sign key")
+	flagSet.StringVar(&config.DatabaseDsn, "d", _defaultConfigDatabaseDsn, "database dsn")
+	flagSet.StringVar(&config.CryptoPrivKeyPath, "crypto-key", _defaultconfigCryptoPrivKeyPath, "crypto private key path")
+	flagSet.StringVar(&config.TrustedSubnet, "t", _defaultConfigTrustedSubnet, "trusted subnet")
+	flagSet.StringVar(&config.GRPCAddress, "g", _defaultConfigGrpcAddress, "server gRPC address")
+	flagSet.StringVar(&config.GRPCServerTLSCert, "gtlscert", _defaultConfigGrpcServerTLSCert, "gRPC server certificate")
+	flagSet.StringVar(&config.GRPCServerTLSKey, "gtlskey", _defaultConfigGrpcServerTLSKey, "gRPC server certificate key")
 	//
 	flagSet.StringVar(&configFilePath, "c", _defaultConfigFilePath, "config file path")
 	flagSet.StringVar(&configFilePath, "config", _defaultConfigFilePath, "config file path")
@@ -66,7 +79,7 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 	}
 
 	// Check env
-	config.Address, err = env.GetVariable("ADDRESS", env.CastString, config.Address)
+	config.HTTPAddress, err = env.GetVariable("ADDRESS", env.CastString, config.HTTPAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +114,26 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 		return nil, err
 	}
 
+	config.TrustedSubnet, err = env.GetVariable("TRUSTED_SUBNET", env.CastString, config.TrustedSubnet)
+	if err != nil {
+		return nil, err
+	}
+
+	config.GRPCAddress, err = env.GetVariable("GRPC_ADDRESS", env.CastString, config.GRPCAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	config.GRPCServerTLSCert, err = env.GetVariable("GRPC_SERVER_TLS_CERT", env.CastString, config.GRPCServerTLSCert)
+	if err != nil {
+		return nil, err
+	}
+
+	config.GRPCServerTLSKey, err = env.GetVariable("GRPC_SERVER_TLS_KEY", env.CastString, config.GRPCServerTLSKey)
+	if err != nil {
+		return nil, err
+	}
+
 	config.LogLevel, err = env.GetVariable("LOG_LEVEL", env.CastString, _defaultConfigLogLevel)
 	if err != nil {
 		return nil, err
@@ -125,25 +158,44 @@ func LoadConfig(flagSet flag.FlagSet, flags []string) (*Config, error) {
 }
 
 func ServerSettingsAdapt(config *Config) (server.ServiceSettings, error) {
-	parts := strings.Split(config.Address, ":")
-	if len(parts) != 2 {
-		return server.ServiceSettings{}, fmt.Errorf("wrong address format")
+	httpAddress, err := nettools.NewAddress(config.HTTPAddress)
+	if err != nil {
+		return server.ServiceSettings{}, err
 	}
 
-	address := parts[0]
-	port, err := strconv.Atoi(parts[1])
+	var trustedSubnet *net.IPNet
+	if config.TrustedSubnet != "" {
+		_, trustedSubnet, err = net.ParseCIDR(config.TrustedSubnet)
+		if err != nil {
+			return server.ServiceSettings{}, err
+		}
+	}
+
+	var grpcAddress *nettools.Address
+	if config.GRPCAddress != "" {
+		var gAddr nettools.Address
+		gAddr, err = nettools.NewAddress(config.GRPCAddress)
+		if err != nil {
+			return server.ServiceSettings{}, err
+		}
+		grpcAddress = &gAddr
+	}
+
+	grpcServerTLS, err := gtls.NewOptionalTLSServerSettings(config.GRPCServerTLSCert, config.GRPCServerTLSKey)
 	if err != nil {
-		return server.ServiceSettings{}, fmt.Errorf("wrong address format")
+		return server.ServiceSettings{}, err
 	}
 
 	persistSettings := storage.NewPersistSettings(config.StoreInterval, config.StoreFile, config.Restore)
 	return server.NewServiceSettings(
-		address,
-		port,
+		httpAddress,
 		config.HmacKey,
 		config.DatabaseDsn,
 		persistSettings,
-		config.CryptoPrivKeyPath), nil
+		config.CryptoPrivKeyPath,
+		trustedSubnet,
+		grpcAddress,
+		grpcServerTLS), nil
 }
 
 type configFile struct {
@@ -154,6 +206,10 @@ type configFile struct {
 	DatabaseDsn       *string        `json:"database_dsn"`
 	HmacKey           *string        `json:"hmac_key"`
 	CryptoPrivKeyPath *string        `json:"crypto_key"`
+	TrustedSubnet     *string        `json:"trusted_subnet"`
+	GRPCAddress       *string        `json:"grpc_address"`
+	GRPCServerTLSCert *string        `json:"grpc_server_tls_cert"`
+	GRPCServerTLSKey  *string        `json:"grpc_server_tls_key"`
 }
 
 func applyConfigFile(config *Config, configFilePath string) error {
@@ -172,8 +228,8 @@ func applyConfigFile(config *Config, configFilePath string) error {
 		return err
 	}
 
-	if configFromFile.Address != nil && config.Address == _defaultConfigAddress {
-		config.Address = *configFromFile.Address
+	if configFromFile.Address != nil && config.HTTPAddress == _defaultConfigHTTPAddress {
+		config.HTTPAddress = *configFromFile.Address
 	}
 	if configFromFile.Restore != nil && config.Restore {
 		config.Restore = *configFromFile.Restore
@@ -184,14 +240,26 @@ func applyConfigFile(config *Config, configFilePath string) error {
 	if configFromFile.StoreFile != nil && config.StoreFile == _defaultConfigStoreFile {
 		config.StoreFile = *configFromFile.StoreFile
 	}
-	if configFromFile.DatabaseDsn != nil && config.DatabaseDsn == _defaultDatabaseDsn {
+	if configFromFile.DatabaseDsn != nil && config.DatabaseDsn == _defaultConfigDatabaseDsn {
 		config.DatabaseDsn = *configFromFile.DatabaseDsn
 	}
-	if configFromFile.HmacKey != nil && config.HmacKey == _defaultHmacKey {
+	if configFromFile.HmacKey != nil && config.HmacKey == _defaultConfigHmacKey {
 		config.HmacKey = *configFromFile.HmacKey
 	}
-	if configFromFile.CryptoPrivKeyPath != nil && config.CryptoPrivKeyPath == _defaultCryptoPrivKeyPath {
+	if configFromFile.CryptoPrivKeyPath != nil && config.CryptoPrivKeyPath == _defaultconfigCryptoPrivKeyPath {
 		config.CryptoPrivKeyPath = *configFromFile.CryptoPrivKeyPath
+	}
+	if configFromFile.TrustedSubnet != nil && config.TrustedSubnet == _defaultConfigTrustedSubnet {
+		config.TrustedSubnet = *configFromFile.TrustedSubnet
+	}
+	if configFromFile.GRPCAddress != nil && config.GRPCAddress == _defaultConfigGrpcAddress {
+		config.GRPCAddress = *configFromFile.GRPCAddress
+	}
+	if configFromFile.GRPCServerTLSCert != nil && config.GRPCServerTLSCert == _defaultConfigGrpcServerTLSCert {
+		config.GRPCServerTLSCert = *configFromFile.GRPCServerTLSCert
+	}
+	if configFromFile.GRPCServerTLSKey != nil && config.GRPCServerTLSKey == _defaultConfigGrpcServerTLSKey {
+		config.GRPCServerTLSKey = *configFromFile.GRPCServerTLSKey
 	}
 
 	return nil

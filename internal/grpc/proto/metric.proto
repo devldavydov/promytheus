@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package grpc;
+
+option go_package = "internal/grpc";
+
+enum MetricType {
+  UNKNOWN = 0;
+  GAUGE   = 1;
+  COUNTER = 2;
+}
+
+message Metric {
+  MetricType type  = 1;
+  string     id    = 2;
+  int64      delta = 3;
+  double     value = 4;
+  string     hash  = 5;
+}
+
+message EmptyRequest {}
+
+message EmptyResponse {}
+
+message UpdateMetricsRequest {
+  repeated Metric metrics = 1;
+}
+
+message UpdateMetricsResponse {}
+
+message GetMetricRequest {
+  MetricType type = 1;
+  string     id   = 2;
+}
+
+message GetMetricResponse {
+  Metric  metric = 1;
+}
+
+message GetAllMetricsResponse {
+  repeated Metric metrics = 1;
+}
+
+service MetricService {
+  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
+  rpc GetMetric(GetMetricRequest) returns (GetMetricResponse);
+  rpc GetAllMetrics(EmptyRequest) returns (GetAllMetricsResponse);
+  rpc Ping(EmptyRequest) returns (EmptyResponse);
+}

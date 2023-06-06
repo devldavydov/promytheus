@@ -38,17 +38,13 @@ func newGzipWriter(rw http.ResponseWriter, w io.Writer) *gzipWriter {
 
 func (gw *gzipWriter) Write(b []byte) (int, error) {
 	if isContentTypeGzipSupported(gw.Header().Get("Content-Type")) {
-		gw.Header().Set("Content-Encoding", "gzip")
-		gw.ResponseWriter.WriteHeader(gw.statusCode)
 		return gw.gzWriter.Write(b)
 	}
-
-	gw.ResponseWriter.WriteHeader(gw.statusCode)
 	return gw.ResponseWriter.Write(b)
 }
 
 func (gw *gzipWriter) WriteHeader(statusCode int) {
-	gw.statusCode = statusCode
+	gw.ResponseWriter.WriteHeader(statusCode)
 }
 
 var supportedContentTypes = []string{
@@ -88,6 +84,7 @@ func Gzip(next http.Handler) http.Handler {
 			gz.Reset(w)
 			defer gz.Close()
 
+			w.Header().Set("Content-Encoding", "gzip")
 			next.ServeHTTP(newGzipWriter(w, gz), r)
 			return
 		}

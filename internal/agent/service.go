@@ -11,7 +11,10 @@ import (
 	"github.com/devldavydov/promytheus/internal/agent/publisher"
 	"github.com/devldavydov/promytheus/internal/common/cipher"
 	"github.com/devldavydov/promytheus/internal/common/metric"
+	"github.com/devldavydov/promytheus/internal/common/nettools"
+	"github.com/devldavydov/promytheus/internal/grpc/gtls"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/credentials"
 )
 
 // Collector is an interface for collector functionality.
@@ -29,15 +32,14 @@ type Publisher interface {
 type Service struct {
 	logger                      *logrus.Logger
 	failedPublishCounterMetrics metric.Metrics
-	publisherFactory            func(threadID int, cryptoPubKey *rsa.PublicKey) Publisher
+	publisherFactory            PublisherFactory
 	metricsChan                 chan metric.Metrics
 	collectors                  []Collector
 	settings                    ServiceSettings
-	shutdownTimeout             time.Duration
 }
 
 // NewService creates new agent service.
-func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger *logrus.Logger) *Service {
+func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger *logrus.Logger) (*Service, error) {
 	collectors := []Collector{
 		collector.NewRuntimeCollector(settings.PollInterval, logger),
 		collector.NewPsUtilCollector(settings.PollInterval, logger),
@@ -45,32 +47,28 @@ func NewService(settings ServiceSettings, shutdownTimeout time.Duration, logger 
 
 	ch := make(chan metric.Metrics, len(collectors)*2)
 
+	hostIP, err := nettools.GetHostIP()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Service{
 		settings:    settings,
 		logger:      logger,
 		collectors:  collectors,
 		metricsChan: ch,
-		publisherFactory: func(threadID int, cryptoPubKey *rsa.PublicKey) Publisher {
-			return publisher.NewHTTPPublisher(
-				settings.ServerAddress,
-				ch,
-				threadID,
-				logger,
-				publisher.HTTPPublisherOptionalSettings{
-					HmacKey:         settings.HmacKey,
-					CryptoPubKey:    cryptoPubKey,
-					ShutdownTimeout: &shutdownTimeout,
-				})
-		},
-		shutdownTimeout: shutdownTimeout,
-	}
+		publisherFactory: CreatePublisherFactory(
+			settings, shutdownTimeout, ch, hostIP, logger,
+		),
+	}, nil
 }
 
 // Start runs agent service with context.
 func (service *Service) Start(ctx context.Context) error {
 	service.logger.Info("Agent service started")
 
-	cryptoPubKey, err := service.loadCryptoPubKey()
+	// Load encryption settings
+	encrSettings, err := service.loadEncryptionSettings()
 	if err != nil {
 		return err
 	}
@@ -89,7 +87,7 @@ func (service *Service) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func(ctx context.Context, threadID int) {
 			defer wg.Done()
-			service.publisherFactory(threadID, cryptoPubKey).Publish()
+			service.publisherFactory(threadID, encrSettings).Publish()
 		}(ctx, i+1)
 	}
 
@@ -126,9 +124,37 @@ func (service *Service) startMainLoop(ctx context.Context) {
 	}
 }
 
-func (service *Service) loadCryptoPubKey() (*rsa.PublicKey, error) {
+func (service *Service) loadEncryptionSettings() (publisher.EncryptionSettings, error) {
+	var err error
+	encrSettings := publisher.EncryptionSettings{}
+
+	if !service.settings.UseGRPC {
+		var cryptoPubKey *rsa.PublicKey
+		cryptoPubKey, err = service.loadHTTPCryptoPubKey()
+		if err == nil {
+			encrSettings.CryptoPubKey = cryptoPubKey
+		}
+	} else {
+		var tlsCredentials credentials.TransportCredentials
+		tlsCredentials, err = service.loadGRPCTLS()
+		if err == nil {
+			encrSettings.TLSCredentials = tlsCredentials
+		}
+	}
+
+	return encrSettings, err
+}
+
+func (service *Service) loadHTTPCryptoPubKey() (*rsa.PublicKey, error) {
 	if service.settings.CryptoPubKeyPath == nil {
 		return nil, nil
 	}
 	return cipher.PublicKeyFromFile(*service.settings.CryptoPubKeyPath)
+}
+
+func (service *Service) loadGRPCTLS() (credentials.TransportCredentials, error) {
+	if service.settings.GRPCCACertPath == nil {
+		return nil, nil
+	}
+	return gtls.LoadCACert(*service.settings.GRPCCACertPath, "")
 }

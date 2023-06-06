@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"net/url"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/devldavydov/promytheus/internal/common/nettools"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,13 +21,15 @@ func TestAgentSettingsAdaptDefault(t *testing.T) {
 	agentSettings, err := AgentSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	expURL, _ := url.Parse("http://127.0.0.1:8080")
+	expAddr, _ := nettools.NewAddress("127.0.0.1:8080")
 	assert.Equal(t, 10*time.Second, agentSettings.ReportInterval)
 	assert.Equal(t, 2*time.Second, agentSettings.PollInterval)
-	assert.Equal(t, expURL, agentSettings.ServerAddress)
+	assert.Equal(t, expAddr, agentSettings.ServerAddress)
 	assert.Nil(t, agentSettings.HmacKey)
 	assert.Nil(t, agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 2, agentSettings.RateLimit)
+	assert.False(t, agentSettings.UseGRPC)
+	assert.Nil(t, agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomEnv(t *testing.T) {
@@ -37,6 +39,8 @@ func TestAgentSettingsAdaptCustomEnv(t *testing.T) {
 	t.Setenv("KEY", "123")
 	t.Setenv("RATE_LIMIT", "10")
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa.pub")
+	t.Setenv("USE_GRPC", "true")
+	t.Setenv("GRPC_CA_CERT", "/home/ca.pem")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 	config, err := LoadConfig(*testFlagSet, []string{})
@@ -45,33 +49,40 @@ func TestAgentSettingsAdaptCustomEnv(t *testing.T) {
 	agentSettings, err := AgentSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	expURL, _ := url.Parse("http://1.1.1.1:9999")
+	expAddr, _ := nettools.NewAddress("1.1.1.1:9999")
 	assert.Equal(t, 1*time.Second, agentSettings.ReportInterval)
 	assert.Equal(t, 2*time.Second, agentSettings.PollInterval)
-	assert.Equal(t, expURL, agentSettings.ServerAddress)
+	assert.Equal(t, expAddr, agentSettings.ServerAddress)
 	assert.Equal(t, "123", *agentSettings.HmacKey)
 	assert.Equal(t, "/home/.ssh/id_rsa.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 10, agentSettings.RateLimit)
+	assert.True(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomFlag(t *testing.T) {
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 	config, err := LoadConfig(
 		*testFlagSet,
-		[]string{"-a", "8.8.8.8:8888", "-r", "11s", "-p", "3s", "-k", "123", "-l", "5", "-crypto-key", "./key.pub"},
+		[]string{
+			"-a", "8.8.8.8:8888", "-r", "11s", "-p", "3s", "-k", "123", "-l", "5", "-crypto-key", "./key.pub", "-g",
+			"-gca", "/home/ca.pem",
+		},
 	)
 	assert.NoError(t, err)
 
 	agentSettings, err := AgentSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	expURL, _ := url.Parse("http://8.8.8.8:8888")
+	expAddr, _ := nettools.NewAddress("8.8.8.8:8888")
 	assert.Equal(t, 11*time.Second, agentSettings.ReportInterval)
 	assert.Equal(t, 3*time.Second, agentSettings.PollInterval)
-	assert.Equal(t, expURL, agentSettings.ServerAddress)
+	assert.Equal(t, expAddr, agentSettings.ServerAddress)
 	assert.Equal(t, "123", *agentSettings.HmacKey)
 	assert.Equal(t, "./key.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 5, agentSettings.RateLimit)
+	assert.True(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomEnvAndFlag(t *testing.T) {
@@ -81,44 +92,54 @@ func TestAgentSettingsAdaptCustomEnvAndFlag(t *testing.T) {
 	t.Setenv("KEY", "123")
 	t.Setenv("RATE_LIMIT", "15")
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa.pub")
+	t.Setenv("USE_GRPC", "false")
+	t.Setenv("GRPC_CA_CERT", "/home/ca.pem")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
 	config, err := LoadConfig(
 		*testFlagSet,
-		[]string{"-a", "8.8.8.8:8888", "-r", "11s", "-p", "3s", "-k", "456", "-l", "1", "-crypto-key", "./key.pub"},
+		[]string{
+			"-a", "8.8.8.8:8888", "-r", "11s", "-p", "3s", "-k", "456", "-l", "1", "-crypto-key", "./key.pub", "-g",
+			"-gca", "/home/ca2.pem",
+		},
 	)
 	assert.NoError(t, err)
 
 	agentSettings, err := AgentSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	expURL, _ := url.Parse("http://1.1.1.1:9999")
+	expAddr, _ := nettools.NewAddress("1.1.1.1:9999")
 	assert.Equal(t, 2*time.Second, agentSettings.ReportInterval)
 	assert.Equal(t, 4*time.Second, agentSettings.PollInterval)
-	assert.Equal(t, expURL, agentSettings.ServerAddress)
+	assert.Equal(t, expAddr, agentSettings.ServerAddress)
 	assert.Equal(t, "123", *agentSettings.HmacKey)
 	assert.Equal(t, "/home/.ssh/id_rsa.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 15, agentSettings.RateLimit)
+	assert.False(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomEnvAndFlagMix(t *testing.T) {
 	t.Setenv("ADDRESS", "1.1.1.1:9999")
 	t.Setenv("CRYPTO_KEY", "/home/.ssh/id_rsa.pub")
+	t.Setenv("GRPC_CA_CERT", "/home/ca.pem")
 
 	testFlagSet := flag.NewFlagSet("test", flag.ExitOnError)
-	config, err := LoadConfig(*testFlagSet, []string{"-a", "8.8.8.8:8888", "-p", "3s", "-l", "11"})
+	config, err := LoadConfig(*testFlagSet, []string{"-a", "8.8.8.8:8888", "-p", "3s", "-l", "11", "-g"})
 	assert.NoError(t, err)
 
 	agentSettings, err := AgentSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	expURL, _ := url.Parse("http://1.1.1.1:9999")
+	expAddr, _ := nettools.NewAddress("1.1.1.1:9999")
 	assert.Equal(t, 10*time.Second, agentSettings.ReportInterval)
 	assert.Equal(t, 3*time.Second, agentSettings.PollInterval)
-	assert.Equal(t, expURL, agentSettings.ServerAddress)
+	assert.Equal(t, expAddr, agentSettings.ServerAddress)
 	assert.Nil(t, agentSettings.HmacKey)
 	assert.Equal(t, "/home/.ssh/id_rsa.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 11, agentSettings.RateLimit)
+	assert.True(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAdaptCustomError(t *testing.T) {
@@ -181,13 +202,15 @@ func TestAgentSettingsWithConfigFile(t *testing.T) {
 	agentSettings, err := AgentSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	expURL, _ := url.Parse("http://172.100.1.1:9090")
+	expAddr, _ := nettools.NewAddress("172.100.1.1:9090")
 	assert.Equal(t, 1*time.Second, agentSettings.ReportInterval)
 	assert.Equal(t, 3*time.Second, agentSettings.PollInterval)
-	assert.Equal(t, expURL, agentSettings.ServerAddress)
+	assert.Equal(t, expAddr, agentSettings.ServerAddress)
 	assert.Nil(t, agentSettings.HmacKey)
 	assert.Nil(t, agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 2, agentSettings.RateLimit)
+	assert.False(t, agentSettings.UseGRPC)
+	assert.Nil(t, agentSettings.GRPCCACertPath)
 }
 
 func TestAgentSettingsAllFromConfigFile(t *testing.T) {
@@ -206,6 +229,8 @@ func TestAgentSettingsAllFromConfigFile(t *testing.T) {
 	cfgHmacKey := "hmacKey"
 	cfgRateLimit := 1
 	cfgPubKey := "/tmp/id_rsa.pub"
+	cfgUseGRPC := true
+	cfgGRPCCACertPath := "/home/ca.pem"
 
 	tempCfg := configFile{
 		Address:          &cfgAddr,
@@ -214,6 +239,8 @@ func TestAgentSettingsAllFromConfigFile(t *testing.T) {
 		HmacKey:          &cfgHmacKey,
 		RateLimit:        &cfgRateLimit,
 		CryptoPubKeyPath: &cfgPubKey,
+		UseGRPC:          &cfgUseGRPC,
+		GRPCCACertPath:   &cfgGRPCCACertPath,
 	}
 	assert.NoError(t, json.NewEncoder(fCfg).Encode(&tempCfg))
 
@@ -225,11 +252,13 @@ func TestAgentSettingsAllFromConfigFile(t *testing.T) {
 	agentSettings, err := AgentSettingsAdapt(config)
 	assert.NoError(t, err)
 
-	expURL, _ := url.Parse("http://172.100.1.1:9090")
+	expAddr, _ := nettools.NewAddress("172.100.1.1:9090")
 	assert.Equal(t, 100*time.Minute, agentSettings.ReportInterval)
 	assert.Equal(t, 200*time.Minute, agentSettings.PollInterval)
-	assert.Equal(t, expURL, agentSettings.ServerAddress)
+	assert.Equal(t, expAddr, agentSettings.ServerAddress)
 	assert.Equal(t, "hmacKey", *agentSettings.HmacKey)
 	assert.Equal(t, "/tmp/id_rsa.pub", *agentSettings.CryptoPubKeyPath)
 	assert.Equal(t, 1, agentSettings.RateLimit)
+	assert.True(t, agentSettings.UseGRPC)
+	assert.Equal(t, "/home/ca.pem", *agentSettings.GRPCCACertPath)
 }

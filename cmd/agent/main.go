@@ -48,7 +48,10 @@ func run() error {
 	}
 
 	logger.Info(appVer)
-	agentService := agent.NewService(agentSettings, 5*time.Second, logger)
+	agentService, err := agent.NewService(agentSettings, 5*time.Second, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create agent service: %w", err)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer stop()
