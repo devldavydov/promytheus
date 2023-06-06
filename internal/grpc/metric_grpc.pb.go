@@ -29,7 +29,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MetricServiceClient interface {
-	UpdateMetrics(ctx context.Context, in *UpdateMetricsRequest, opts ...grpc.CallOption) (*EmptyResponse, error)
+	UpdateMetrics(ctx context.Context, in *UpdateMetricsRequest, opts ...grpc.CallOption) (*UpdateMetricsResponse, error)
 	GetMetric(ctx context.Context, in *GetMetricRequest, opts ...grpc.CallOption) (*GetMetricResponse, error)
 	GetAllMetrics(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetAllMetricsResponse, error)
 	Ping(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*EmptyResponse, error)
@@ -43,8 +43,8 @@ func NewMetricServiceClient(cc grpc.ClientConnInterface) MetricServiceClient {
 	return &metricServiceClient{cc}
 }
 
-func (c *metricServiceClient) UpdateMetrics(ctx context.Context, in *UpdateMetricsRequest, opts ...grpc.CallOption) (*EmptyResponse, error) {
-	out := new(EmptyResponse)
+func (c *metricServiceClient) UpdateMetrics(ctx context.Context, in *UpdateMetricsRequest, opts ...grpc.CallOption) (*UpdateMetricsResponse, error) {
+	out := new(UpdateMetricsResponse)
 	err := c.cc.Invoke(ctx, MetricService_UpdateMetrics_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (c *metricServiceClient) Ping(ctx context.Context, in *EmptyRequest, opts .
 // All implementations must embed UnimplementedMetricServiceServer
 // for forward compatibility
 type MetricServiceServer interface {
-	UpdateMetrics(context.Context, *UpdateMetricsRequest) (*EmptyResponse, error)
+	UpdateMetrics(context.Context, *UpdateMetricsRequest) (*UpdateMetricsResponse, error)
 	GetMetric(context.Context, *GetMetricRequest) (*GetMetricResponse, error)
 	GetAllMetrics(context.Context, *EmptyRequest) (*GetAllMetricsResponse, error)
 	Ping(context.Context, *EmptyRequest) (*EmptyResponse, error)
@@ -94,7 +94,7 @@ type MetricServiceServer interface {
 type UnimplementedMetricServiceServer struct {
 }
 
-func (UnimplementedMetricServiceServer) UpdateMetrics(context.Context, *UpdateMetricsRequest) (*EmptyResponse, error) {
+func (UnimplementedMetricServiceServer) UpdateMetrics(context.Context, *UpdateMetricsRequest) (*UpdateMetricsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateMetrics not implemented")
 }
 func (UnimplementedMetricServiceServer) GetMetric(context.Context, *GetMetricRequest) (*GetMetricResponse, error) {

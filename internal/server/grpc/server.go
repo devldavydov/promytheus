@@ -46,7 +46,7 @@ func NewServer(stg storage.Storage, hmacKey *string, trustedSubnet *net.IPNet, t
 }
 
 // UpdateMetrics - method for update batch of metrics.
-func (s *Server) UpdateMetrics(ctx context.Context, in *pb.UpdateMetricsRequest) (*pb.EmptyResponse, error) {
+func (s *Server) UpdateMetrics(ctx context.Context, in *pb.UpdateMetricsRequest) (*pb.UpdateMetricsResponse, error) {
 	metrics, err := s.parseUpdateRequest(in.Metrics)
 	if err != nil {
 		s.logger.Errorf("failed to parse update metrics %v: %v", in.Metrics, err)
@@ -57,7 +57,7 @@ func (s *Server) UpdateMetrics(ctx context.Context, in *pb.UpdateMetricsRequest)
 		s.logger.Errorf("failed to update metrics %v: %v", metrics, err)
 		return nil, getErrorStatus(err)
 	}
-	return &pb.EmptyResponse{}, nil
+	return &pb.UpdateMetricsResponse{}, nil
 }
 
 // GetAllMetrics return all metrics from storage.

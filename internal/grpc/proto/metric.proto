@@ -26,6 +26,8 @@ message UpdateMetricsRequest {
   repeated Metric metrics = 1;
 }
 
+message UpdateMetricsResponse {}
+
 message GetMetricRequest {
   MetricType type = 1;
   string     id   = 2;
@@ -40,7 +42,7 @@ message GetAllMetricsResponse {
 }
 
 service MetricService {
-  rpc UpdateMetrics(UpdateMetricsRequest) returns (EmptyResponse);
+  rpc UpdateMetrics(UpdateMetricsRequest) returns (UpdateMetricsResponse);
   rpc GetMetric(GetMetricRequest) returns (GetMetricResponse);
   rpc GetAllMetrics(EmptyRequest) returns (GetAllMetricsResponse);
   rpc Ping(EmptyRequest) returns (EmptyResponse);
